@@ -503,8 +503,15 @@ const getDeployedReleaseItems = (deployment) => {
   const release = getReleaseById(deployment.itemId)
   if (!release) return []
   
-  // Filtrar solo los items que estaban en el snapshot
-  return release.items.filter(item => deployment.snapshotItemIds.includes(item.id))
+  // Filtrar solo los items que estaban en el snapshot y ordenar por tipo
+  const items = release.items.filter(item => deployment.snapshotItemIds.includes(item.id))
+  
+  // Ordenar por tipo: 'fix' primero, luego 'feature'
+  return items.sort((a, b) => {
+    if (a.type === 'fix' && b.type === 'feature') return -1
+    if (a.type === 'feature' && b.type === 'fix') return 1
+    return 0
+  })
 }
 /**
  * Para cada release disponible, filtrar sus items que no están desplegados individualmente
@@ -1135,10 +1142,12 @@ document.addEventListener('drop', (e) => {
 
 .deployment-dashboard {
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin: 0 auto;
-  padding: 20px;
+  margin: 0;
+  padding: 24px;
   background-color: #f8fafc;
-  min-height: 100vh;
+  min-height: calc(100vh - 64px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-title {
@@ -1156,9 +1165,10 @@ document.addEventListener('drop', (e) => {
 
 .dashboard-container {
   display: grid;
-  grid-template-columns: 0.6fr 2.4fr;
+  grid-template-columns: 400px 1fr;
   gap: 30px;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 150px);
+  width: 100%;
 }
 
 .left-column, .right-column {
@@ -1166,7 +1176,15 @@ document.addEventListener('drop', (e) => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.left-column {
   overflow-y: auto;
+}
+
+.right-column {
+  overflow: hidden;
+  width: 100%;
 }
 
 .section-title {
@@ -1613,19 +1631,46 @@ document.addEventListener('drop', (e) => {
    ========================================== */
 
 .kanban-board {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   gap: 16px;
-  height: 100%;
+  height: calc(100vh - 250px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mejorar apariencia del scrollbar */
+.kanban-board::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-board::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .environment-column {
   background: #f1f5f9;
   border-radius: 8px;
   padding: 16px;
-  min-height: 400px;
   border: 2px dashed #cbd5e1;
   transition: all 0.2s ease;
+  overflow-y: auto;
+  min-height: 100%;
+  width: 280px;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 .environment-column:hover {
@@ -1771,7 +1816,7 @@ document.addEventListener('drop', (e) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 4px 0px;
   background: #f8fafc;
   border-radius: 4px;
 }
@@ -1869,17 +1914,40 @@ document.addEventListener('drop', (e) => {
   }
   
   .kanban-board {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    overflow-x: auto;
+    height: auto;
+    width: 100%;
+  }
+  
+  .environment-column {
+    min-height: 400px;
+    width: 280px;
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 768px) {
+  .deployment-dashboard {
+    padding: 16px;
+  }
+  
   .dashboard-title {
     font-size: 1.5rem;
   }
   
   .kanban-board {
-    grid-template-columns: 1fr;
+    display: flex;
+    overflow-x: auto;
+    height: auto;
+    width: 100%;
+  }
+  
+  .environment-column {
+    min-height: 400px;
+    width: 250px;
+    flex-shrink: 0;
+    overflow-y: auto;
   }
   
   .left-column, .right-column {
