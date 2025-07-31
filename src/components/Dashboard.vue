@@ -8,6 +8,40 @@
         
         <!-- Releases con Items -->
         <div class="releases-container">
+          <div class="subsection-header">
+            <h3 class="subsection-title">Releases</h3>
+            <button 
+              class="add-item-btn"
+              @click="toggleNewReleaseForm"
+              :class="{ 'active': showNewReleaseForm }"
+            >
+              <span class="add-icon">{{ showNewReleaseForm ? '×' : '+' }}</span>
+            </button>
+          </div>
+
+          <!-- Formulario para nuevo release -->
+          <div v-if="showNewReleaseForm" class="new-item-form">
+            <input
+              ref="releaseNameInput"
+              v-model="newRelease.name"
+              type="text"
+              placeholder="Numero de release. Ej: 3.2.1"
+              class="item-title-input"
+              @keyup.enter="createNewRelease"
+              @keyup.escape="cancelNewRelease"
+            />
+            <div class="form-controls">
+              <div class="form-buttons">
+                <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim()">
+                  ✓
+                </button>
+                <button @click="cancelNewRelease" class="cancel-btn">
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div 
             v-for="release in availableReleases" 
             :key="release.id" 
@@ -360,6 +394,13 @@ const newItem = ref({
 })
 const titleInput = ref(null)
 
+// Variables para el formulario de nuevo release
+const showNewReleaseForm = ref(false)
+const newRelease = ref({
+  name: ''
+})
+const releaseNameInput = ref(null)
+
 // ==========================================
 // MÉTODOS COMPUTADOS
 // ==========================================
@@ -514,6 +555,73 @@ const resetNewItemForm = () => {
   newItem.value = {
     title: '',
     type: 'feature'
+  }
+}
+
+// ==========================================
+// FUNCIONALIDAD NUEVO RELEASE
+// ==========================================
+
+/**
+ * Muestra/oculta el formulario de nuevo release
+ */
+const toggleNewReleaseForm = () => {
+  showNewReleaseForm.value = !showNewReleaseForm.value
+  
+  if (showNewReleaseForm.value) {
+    // Focus en el input después del próximo tick del DOM
+    setTimeout(() => {
+      releaseNameInput.value?.focus()
+    }, 50)
+  } else {
+    // Resetear formulario al cerrar
+    resetNewReleaseForm()
+  }
+}
+
+/**
+ * Crea un nuevo release
+ */
+const createNewRelease = () => {
+  const name = newRelease.value.name.trim()
+  
+  if (!name) {
+    console.warn('❌ El nombre del release es requerido')
+    return
+  }
+
+  // Crear nuevo release con "Release" agregado al nombre
+  const release = {
+    id: `release-${Date.now()}`,
+    name: `Release ${name}`,
+    description: '', // Descripción vacía como solicitado
+    items: [] // Inicialmente sin items
+  }
+
+  // Agregar a la lista de releases
+  releases.value.push(release)
+
+  console.log(`✅ Nuevo release creado: ${release.name}`)
+
+  // Resetear formulario y cerrar
+  resetNewReleaseForm()
+  showNewReleaseForm.value = false
+}
+
+/**
+ * Cancela la creación del nuevo release
+ */
+const cancelNewRelease = () => {
+  resetNewReleaseForm()
+  showNewReleaseForm.value = false
+}
+
+/**
+ * Resetea el formulario de nuevo release
+ */
+const resetNewReleaseForm = () => {
+  newRelease.value = {
+    name: ''
   }
 }
 
@@ -795,6 +903,13 @@ document.addEventListener('drop', (e) => {
 
 .releases-container {
   margin-bottom: 30px;
+}
+
+.subsection-title {
+  color: #475569;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .release-card {
