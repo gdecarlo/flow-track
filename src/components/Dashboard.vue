@@ -152,11 +152,47 @@
 
       <!-- Columna Derecha: Tablero Kanban de Ambientes -->
       <div class="right-column">
-        <h2 class="section-title">Ambientes de Despliegue</h2>
+        <div class="section-header">
+          <h2 class="section-title">Ambientes de Despliegue</h2>
+          <button 
+            class="add-item-btn"
+            @click="toggleNewEnvironmentForm"
+            :class="{ 'active': showNewEnvironmentForm }"
+            title="Agregar ambiente"
+          >
+            <span class="add-icon">{{ showNewEnvironmentForm ? '×' : '+' }}</span>
+          </button>
+        </div>
+
+        <!-- Formulario para nuevo ambiente -->
+        <div v-if="showNewEnvironmentForm" class="new-environment-form">
+          <input
+            ref="environmentNameInput"
+            v-model="newEnvironment.name"
+            type="text"
+            placeholder="Nombre del ambiente..."
+            class="environment-name-input"
+            @keyup.enter="createNewEnvironment"
+            @keyup.escape="cancelNewEnvironment"
+          />
+          <div class="form-controls">
+            <div class="form-buttons">
+              <button @click="createNewEnvironment" class="save-btn" :disabled="!newEnvironment.name.trim() || isDuplicateEnvironment">
+                ✓
+              </button>
+              <button @click="cancelNewEnvironment" class="cancel-btn">
+                ×
+              </button>
+            </div>
+          </div>
+          <div v-if="isDuplicateEnvironment" class="error-message">
+            ⚠️ Ya existe un ambiente con este nombre
+          </div>
+        </div>
         
         <div class="kanban-board">
           <div 
-            v-for="environment in environments" 
+            v-for="environment in sortedEnvironments" 
             :key="environment.id"
             class="environment-column"
             @dragover.prevent
@@ -164,10 +200,27 @@
             @drop="handleDrop($event, environment.id)"
           >
             <div class="environment-header">
-              <h3>{{ environment.name }}</h3>
-              <span class="deployment-count">
-                {{ getDeploymentCount(environment.id) }} despliegues
-              </span>
+              <div class="environment-title">
+                <h3>{{ environment.name }}</h3>
+                <div class="environment-controls">
+                  <button 
+                    @click="moveEnvironmentUp(environment.id)"
+                    class="move-btn"
+                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) <= 0"
+                    title="Mover hacia la izquierda"
+                  >
+                    ◄
+                  </button>
+                  <button 
+                    @click="moveEnvironmentDown(environment.id)"
+                    class="move-btn"
+                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) >= sortedEnvironments.length - 1"
+                    title="Mover hacia la derecha"
+                  >
+                    ►
+                  </button>
+                </div>
+              </div>
             </div>
             
             <div class="deployments-container">
@@ -350,24 +403,22 @@ const releases = ref([
 // Ambientes de despliegue
 const environments = ref([
   {
-    id: 'test1',
-    name: 'Test 1',
-    description: 'Ambiente de pruebas unitarias'
-  },
-  {
-    id: 'test2',
-    name: 'Test 2',
-    description: 'Ambiente de pruebas de integración'
+    id: 'test',
+    name: 'Test',
+    description: 'Ambiente de pruebas',
+    order: 1
   },
   {
     id: 'demo',
     name: 'Demo',
-    description: 'Ambiente de demostración para clientes'
+    description: 'Ambiente de demostración',
+    order: 2
   },
   {
     id: 'prod',
     name: 'Prod',
-    description: 'Ambiente de producción'
+    description: 'Ambiente de producción',
+    order: 3
   }
 ])
 
@@ -377,7 +428,7 @@ const deployments = ref([
     id: 'deploy-1',
     itemId: 'release-2',
     type: 'release',
-    environmentId: 'test1',
+    environmentId: 'test',
     deployedAt: new Date('2025-07-29T10:30:00'),
     snapshotItemIds: ['item-6', 'item-7'] // Items que estaban disponibles cuando se desplegó
   },
@@ -385,7 +436,7 @@ const deployments = ref([
     id: 'deploy-2',
     itemId: 'item-1',
     type: 'item',
-    environmentId: 'test2',
+    environmentId: 'demo',
     deployedAt: new Date('2025-07-29T14:15:00')
   }
 ])
@@ -407,6 +458,13 @@ const newRelease = ref({
   name: ''
 })
 const releaseNameInput = ref(null)
+
+// Variables para el formulario de nuevo ambiente
+const showNewEnvironmentForm = ref(false)
+const newEnvironment = ref({
+  name: ''
+})
+const environmentNameInput = ref(null)
 
 // ==========================================
 // MÉTODOS COMPUTADOS
@@ -460,13 +518,6 @@ const getAvailableItemsForRelease = (release) => {
 }
 
 /**
- * Obtiene el número de despliegues por ambiente
- */
-const getDeploymentCount = (environmentId) => {
-  return deployments.value.filter(d => d.environmentId === environmentId).length
-}
-
-/**
  * Verifica si el nombre del release a crear ya existe
  */
 const isDuplicateRelease = computed(() => {
@@ -474,6 +525,22 @@ const isDuplicateRelease = computed(() => {
   
   const fullReleaseName = `Release ${newRelease.value.name.trim()}`
   return releases.value.some(r => r.name === fullReleaseName)
+})
+
+/**
+ * Verifica si el nombre del ambiente a crear ya existe
+ */
+const isDuplicateEnvironment = computed(() => {
+  if (!newEnvironment.value.name.trim()) return false
+  
+  return environments.value.some(env => env.name.toLowerCase() === newEnvironment.value.name.trim().toLowerCase())
+})
+
+/**
+ * Obtiene los ambientes ordenados por su propiedad order
+ */
+const sortedEnvironments = computed(() => {
+  return [...environments.value].sort((a, b) => (a.order || 999) - (b.order || 999))
 })
 
 /**
@@ -649,6 +716,121 @@ const resetNewReleaseForm = () => {
   newRelease.value = {
     name: ''
   }
+}
+
+// ==========================================
+// FUNCIONALIDAD NUEVO AMBIENTE
+// ==========================================
+
+/**
+ * Muestra/oculta el formulario de nuevo ambiente
+ */
+const toggleNewEnvironmentForm = () => {
+  showNewEnvironmentForm.value = !showNewEnvironmentForm.value
+  
+  if (showNewEnvironmentForm.value) {
+    // Focus en el input después del próximo tick del DOM
+    setTimeout(() => {
+      environmentNameInput.value?.focus()
+    }, 50)
+  } else {
+    // Resetear formulario al cerrar
+    resetNewEnvironmentForm()
+  }
+}
+
+/**
+ * Crea un nuevo ambiente
+ */
+const createNewEnvironment = () => {
+  const name = newEnvironment.value.name.trim()
+  
+  if (!name) {
+    console.warn('❌ El nombre del ambiente es requerido')
+    return
+  }
+
+  // Verificar que no exista ya un ambiente con el mismo nombre
+  const existingEnvironment = environments.value.find(env => env.name.toLowerCase() === name.toLowerCase())
+  if (existingEnvironment) {
+    console.warn(`❌ Ya existe un ambiente con el nombre "${name}"`)
+    return
+  }
+
+  // Obtener el siguiente número de orden
+  const maxOrder = Math.max(...environments.value.map(env => env.order || 0), 0)
+
+  // Crear nuevo ambiente
+  const environment = {
+    id: `env-${Date.now()}`,
+    name: name,
+    description: `Ambiente ${name}`,
+    order: maxOrder + 1
+  }
+
+  // Agregar a la lista de ambientes
+  environments.value.push(environment)
+
+  console.log(`✅ Nuevo ambiente creado: ${environment.name}`)
+
+  // Resetear formulario y cerrar
+  resetNewEnvironmentForm()
+  showNewEnvironmentForm.value = false
+}
+
+/**
+ * Cancela la creación del nuevo ambiente
+ */
+const cancelNewEnvironment = () => {
+  resetNewEnvironmentForm()
+  showNewEnvironmentForm.value = false
+}
+
+/**
+ * Resetea el formulario de nuevo ambiente
+ */
+const resetNewEnvironmentForm = () => {
+  newEnvironment.value = {
+    name: ''
+  }
+}
+
+/**
+ * Mueve un ambiente hacia arriba en el orden
+ */
+const moveEnvironmentUp = (environmentId) => {
+  const sortedEnvs = sortedEnvironments.value
+  const envIndex = sortedEnvs.findIndex(env => env.id === environmentId)
+  if (envIndex <= 0) return // Ya está en la primera posición o no existe
+  
+  const currentEnv = sortedEnvs[envIndex]
+  const prevEnv = sortedEnvs[envIndex - 1]
+  
+  // Intercambiar órdenes
+  const tempOrder = currentEnv.order
+  currentEnv.order = prevEnv.order
+  prevEnv.order = tempOrder
+  
+  console.log(`◄ Ambiente ${currentEnv.name} movido hacia la izquierda`)
+}
+
+/**
+ * Mueve un ambiente hacia abajo en el orden
+ */
+const moveEnvironmentDown = (environmentId) => {
+  const sortedEnvs = sortedEnvironments.value
+  const envIndex = sortedEnvs.findIndex(env => env.id === environmentId)
+  if (envIndex >= sortedEnvs.length - 1 || envIndex === -1) return // Ya está en la última posición o no existe
+  
+  const currentEnv = sortedEnvs[envIndex]
+  const nextEnv = sortedEnvs[envIndex + 1]
+  
+  // Intercambiar órdenes
+  const tempOrder = currentEnv.order
+  currentEnv.order = nextEnv.order
+  nextEnv.order = tempOrder
+  
+  console.log(`► Ambiente ${currentEnv.name} movido hacia la derecha`)
 }
 
 // ==========================================
@@ -996,6 +1178,19 @@ document.addEventListener('drop', (e) => {
   padding-bottom: 10px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 /* ==========================================
    COLUMNA IZQUIERDA - RELEASES E ITEMS
    ========================================== */
@@ -1255,6 +1450,39 @@ document.addEventListener('drop', (e) => {
   animation: slideDown 0.3s ease;
 }
 
+/* Formulario de nuevo ambiente */
+.new-environment-form {
+  background: #f0f9ff;
+  border: 2px dashed #0ea5e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  animation: slideDown 0.3s ease;
+}
+
+.environment-name-input {
+  width: 100%;
+  border: 2px solid #0ea5e9;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  transition: border-color 0.2s ease;
+  background: white;
+  box-sizing: border-box;
+}
+
+.environment-name-input:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.environment-name-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -1412,11 +1640,55 @@ document.addEventListener('drop', (e) => {
   border-bottom: 1px solid #cbd5e1;
 }
 
+.environment-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .environment-header h3 {
-  margin: 0 0 4px 0;
+  margin: 0;
   color: #334155;
   font-size: 1rem;
   font-weight: 600;
+  flex: 1;
+  text-align: left;
+}
+
+.environment-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.move-btn {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #64748b;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.move-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #475569;
+  transform: scale(1.1);
+}
+
+.move-btn:disabled {
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .deployment-count {
