@@ -27,12 +27,16 @@
               type="text"
               placeholder="Numero de release. Ej: 3.2.1"
               class="item-title-input"
+              :class="{ 'error': isDuplicateRelease }"
               @keyup.enter="createNewRelease"
               @keyup.escape="cancelNewRelease"
             />
+            <div v-if="isDuplicateRelease" class="error-message">
+              ⚠️ Ya existe un release con este nombre
+            </div>
             <div class="form-controls">
               <div class="form-buttons">
-                <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim()">
+                <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim() || isDuplicateRelease">
                   ✓
                 </button>
                 <button @click="cancelNewRelease" class="cancel-btn">
@@ -138,7 +142,7 @@
           >
             <div class="item-header">
               <div class="item-info">
-                <span class="item-type">{{ item.type.toUpperCase() }}</span>
+                <span class="item-type">{{ item.type }}</span>
                 <span class="item-title">{{ item.title }}</span>
               </div>
             </div>
@@ -176,6 +180,9 @@
                 :data-id="deployment.itemId"
                 draggable="true"
                 @dragstart="handleDragStart"
+                @dragover.prevent
+                @dragenter.prevent
+                @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
               >
                 <div class="deployment-header">
                   <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
@@ -189,7 +196,7 @@
                         :key="item.id" 
                         class="deployed-item-detail"
                         :class="`item-${item.type}`">
-                    <span class="item-type" :class="item.type">{{ item.type.toUpperCase() }}</span>
+                    <span class="item-type" :class="item.type">{{ item.type }}</span>
                     <span class="item-title">{{ item.title }}</span>
                   </div>
                 </div>
@@ -460,6 +467,16 @@ const getDeploymentCount = (environmentId) => {
 }
 
 /**
+ * Verifica si el nombre del release a crear ya existe
+ */
+const isDuplicateRelease = computed(() => {
+  if (!newRelease.value.name.trim()) return false
+  
+  const fullReleaseName = `Release ${newRelease.value.name.trim()}`
+  return releases.value.some(r => r.name === fullReleaseName)
+})
+
+/**
  * Obtiene los despliegues de un ambiente específico
  */
 const getDeploymentsByEnvironment = (environmentId) => {
@@ -590,10 +607,19 @@ const createNewRelease = () => {
     return
   }
 
+  const fullReleaseName = `Release ${name}`
+
+  // Verificar que no exista ya un release con el mismo nombre
+  const existingRelease = releases.value.find(r => r.name === fullReleaseName)
+  if (existingRelease) {
+    console.warn(`❌ Ya existe un release con el nombre "${fullReleaseName}"`)
+    return
+  }
+
   // Crear nuevo release con "Release" agregado al nombre
   const release = {
     id: `release-${Date.now()}`,
-    name: `Release ${name}`,
+    name: fullReleaseName,
     description: '', // Descripción vacía como solicitado
     items: [] // Inicialmente sin items
   }
@@ -628,6 +654,79 @@ const resetNewReleaseForm = () => {
 // ==========================================
 // FUNCIONALIDAD DRAG AND DROP
 // ==========================================
+
+/**
+ * Maneja el drop en releases desplegados en ambientes (para agregar items desde otros ambientes)
+ */
+const handleDropOnDeployedRelease = (event, releaseId) => {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  if (!dragData.value) {
+    console.warn('❌ No hay datos de drag disponibles')
+    return
+  }
+
+  const { type, id } = dragData.value
+  
+  // Solo permitir agregar items a releases
+  if (type !== 'item') {
+    console.warn('❌ Solo se pueden agregar items a releases')
+    resetDragVisuals()
+    return
+  }
+
+  // Obtener el item y el release
+  const item = getItemById(id)
+  const release = getReleaseById(releaseId)
+  
+  if (!item || !release) {
+    console.warn('❌ Item o release no encontrado')
+    resetDragVisuals()
+    return
+  }
+
+  // Verificar que el item no esté ya en este release
+  const itemAlreadyInRelease = release.items.some(i => i.id === id)
+  if (itemAlreadyInRelease) {
+    console.warn('❌ Este item ya está en el release')
+    resetDragVisuals()
+    return
+  }
+
+  // Remover el despliegue individual del item si existe
+  deployments.value = deployments.value.filter(d => d.itemId !== id)
+
+  // Si el item estaba en items standalone, removerlo de ahí
+  const isStandalone = standaloneItems.value.some(i => i.id === id)
+  if (isStandalone) {
+    standaloneItems.value = standaloneItems.value.filter(i => i.id !== id)
+  } else {
+    // Si no era standalone, estaba en otro release, removerlo de ahí
+    for (const rel of releases.value) {
+      if (rel.id !== releaseId) {
+        rel.items = rel.items.filter(i => i.id !== id)
+      }
+    }
+  }
+
+  // Agregar el item al release destino
+  release.items.push(item)
+
+  // Actualizar el snapshot del release desplegado si existe
+  const releaseDeployment = deployments.value.find(d => d.itemId === releaseId && d.type === 'release')
+  if (releaseDeployment && releaseDeployment.snapshotItemIds) {
+    if (!releaseDeployment.snapshotItemIds.includes(id)) {
+      releaseDeployment.snapshotItemIds.push(id)
+    }
+  }
+
+  console.log(`✅ Item ${id} agregado al release desplegado ${releaseId}`)
+
+  // Limpiar datos del drag
+  dragData.value = null
+  resetDragVisuals()
+}
 
 /**
  * Maneja el drop en los releases (para agregar items independientes)
@@ -828,20 +927,20 @@ document.addEventListener('dragend', () => {
 
 // Efectos visuales para drag over en releases
 document.addEventListener('dragenter', (e) => {
-  if (e.target.classList.contains('release-header') && dragData.value?.type === 'item') {
+  if ((e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) && dragData.value?.type === 'item') {
     e.target.classList.add('drag-over')
   }
 })
 
 document.addEventListener('dragleave', (e) => {
-  if (e.target.classList.contains('release-header')) {
+  if (e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) {
     e.target.classList.remove('drag-over')
   }
 })
 
 document.addEventListener('drop', (e) => {
   // Limpiar efectos visuales en releases
-  document.querySelectorAll('.release-header').forEach(el => {
+  document.querySelectorAll('.release-header, .deployed-release').forEach(el => {
     el.classList.remove('drag-over')
   })
 })
@@ -1044,7 +1143,8 @@ document.addEventListener('drop', (e) => {
 }
 
 /* Estilos para release header que acepta drops */
-.release-header.drag-over {
+.release-header.drag-over,
+.deployed-release.drag-over {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
   transform: scale(1.02);
 }
@@ -1186,9 +1286,29 @@ document.addEventListener('drop', (e) => {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
+.item-title-input.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.item-title-input.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 .item-title-input::placeholder {
   color: #94a3b8;
   font-style: italic;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .form-controls {
