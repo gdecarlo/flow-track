@@ -54,7 +54,44 @@
 
         <!-- Items sin Release -->
         <div class="standalone-items">
-          <h3 class="subsection-title">Items Independientes</h3>
+          <div class="subsection-header">
+            <h3 class="subsection-title">Items Independientes</h3>
+            <button 
+              class="add-item-btn"
+              @click="toggleNewItemForm"
+              :class="{ 'active': showNewItemForm }"
+            >
+              <span class="add-icon">{{ showNewItemForm ? '×' : '+' }}</span>
+            </button>
+          </div>
+
+          <!-- Formulario para nuevo item -->
+          <div v-if="showNewItemForm" class="new-item-form">
+            <input
+              ref="titleInput"
+              v-model="newItem.title"
+              type="text"
+              placeholder="Título del item..."
+              class="item-title-input"
+              @keyup.enter="createNewItem"
+              @keyup.escape="cancelNewItem"
+            />
+            <div class="form-controls">
+              <select v-model="newItem.type" class="item-type-select">
+                <option value="feature">Feature</option>
+                <option value="fix">Fix</option>
+              </select>
+              <div class="form-buttons">
+                <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim()">
+                  ✓
+                </button>
+                <button @click="cancelNewItem" class="cancel-btn">
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div
             v-for="item in availableStandaloneItems"
             :key="item.id"
@@ -315,6 +352,14 @@ const deployments = ref([
 // Variable para almacenar datos del drag
 const dragData = ref(null)
 
+// Variables para el formulario de nuevo item
+const showNewItemForm = ref(false)
+const newItem = ref({
+  title: '',
+  type: 'feature'
+})
+const titleInput = ref(null)
+
 // ==========================================
 // MÉTODOS COMPUTADOS
 // ==========================================
@@ -401,6 +446,75 @@ const getItemById = (itemId) => {
     if (item) return item
   }
   return null
+}
+
+// ==========================================
+// FUNCIONALIDAD NUEVO ITEM
+// ==========================================
+
+/**
+ * Muestra/oculta el formulario de nuevo item
+ */
+const toggleNewItemForm = () => {
+  showNewItemForm.value = !showNewItemForm.value
+  
+  if (showNewItemForm.value) {
+    // Focus en el input después del próximo tick del DOM
+    setTimeout(() => {
+      titleInput.value?.focus()
+    }, 50)
+  } else {
+    // Resetear formulario al cerrar
+    resetNewItemForm()
+  }
+}
+
+/**
+ * Crea un nuevo item independiente
+ */
+const createNewItem = () => {
+  const title = newItem.value.title.trim()
+  
+  if (!title) {
+    console.warn('❌ El título del item es requerido')
+    return
+  }
+
+  // Crear nuevo item
+  const item = {
+    id: `item-${Date.now()}`,
+    title: title,
+    description: `Item creado el ${formatDate(new Date())}`,
+    type: newItem.value.type,
+    priority: 'medium' // Valor por defecto
+  }
+
+  // Agregar a la lista de items standalone
+  standaloneItems.value.push(item)
+
+  console.log(`✅ Nuevo item creado: ${item.title}`)
+
+  // Resetear formulario y cerrar
+  resetNewItemForm()
+  showNewItemForm.value = false
+}
+
+/**
+ * Cancela la creación del nuevo item
+ */
+const cancelNewItem = () => {
+  resetNewItemForm()
+  showNewItemForm.value = false
+}
+
+/**
+ * Resetea el formulario de nuevo item
+ */
+const resetNewItemForm = () => {
+  newItem.value = {
+    title: '',
+    type: 'feature'
+  }
 }
 
 // ==========================================
@@ -653,7 +767,7 @@ document.addEventListener('drop', (e) => {
 
 .dashboard-container {
   display: grid;
-  grid-template-columns: 0.5fr 2.5fr;
+  grid-template-columns: 0.6fr 2.4fr;
   gap: 30px;
   height: calc(100vh - 120px);
 }
@@ -860,11 +974,175 @@ document.addEventListener('drop', (e) => {
   padding-top: 20px;
 }
 
+.subsection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .subsection-title {
   color: #475569;
   font-size: 1.1rem;
   font-weight: 600;
+  margin: 0;
+}
+
+.add-item-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #10b981;
+  background: white;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.add-item-btn:hover {
+  background: #10b981;
+  color: white;
+  transform: scale(1.1);
+}
+
+.add-item-btn.active {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+.add-item-btn.active:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.add-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.add-item-btn.active .add-icon {
+  transform: rotate(45deg);
+}
+
+/* Formulario de nuevo item */
+.new-item-form {
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 16px;
   margin-bottom: 16px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+}
+
+.item-title-input {
+  width: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  transition: border-color 0.2s ease;
+  background: white;
+  box-sizing: border-box;
+}
+
+.item-title-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.item-title-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.form-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.item-type-select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  flex: 1;
+}
+
+.item-type-select:focus {
+  outline: none;
+  border-color: #10b981;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.save-btn,
+.cancel-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-btn {
+  background: #10b981;
+  color: white;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.save-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cancel-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
 }
 
 /* ==========================================
