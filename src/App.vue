@@ -1,8 +1,11 @@
 <script setup>
+import Dashboard from './components/Dashboard.vue';
+
 </script>
 
 <template>
-  <h1>Template Vue 3.4</h1>
+  <h1>Flow Track</h1>
+  <Dashboard />
 </template>
 
 <style scoped>
