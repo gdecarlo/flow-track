@@ -81,7 +81,7 @@
               >
                 <div class="item-header">
                   <div class="item-info">
-                    <span class="item-type">{{ item.type.toUpperCase() }}</span>
+                    <span class="item-type">{{ item.type }}</span>
                     <span class="item-title">{{ item.title }}</span>
                   </div>
                 </div>
@@ -118,6 +118,7 @@
               <select v-model="newItem.type" class="item-type-select">
                 <option value="feature">Feature</option>
                 <option value="fix">Fix</option>
+                <option value="hotfix">Hotfix</option>
               </select>
               <div class="form-buttons">
                 <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim()">
@@ -267,7 +268,7 @@
                 @dragstart="handleDragStart"
               >
                 <div class="deployment-header">
-                  <span class="item-type">{{ getItemById(deployment.itemId)?.type.toUpperCase() }}</span>
+                  <span class="item-type">{{ getItemById(deployment.itemId)?.type }}</span>
                   <span class="item-title">{{ getItemById(deployment.itemId)?.title }}</span>
                   <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
                 </div>
@@ -293,8 +294,7 @@ import { defineComponent, ref, computed } from 'vue'
  * @property {string} id - Identificador único
  * @property {string} title - Título del item
  * @property {string} description - Descripción del item
- * @property {'feature'|'fix'} type - Tipo de item
- * @property {'low'|'medium'|'high'|'critical'} priority - Prioridad
+ * @property {'feature'|'fix'|'hotfix'} type - Tipo de item
  */
 
 /**
@@ -372,7 +372,7 @@ const releases = ref([
         id: 'item-5',
         title: 'API de notificaciones',
         description: 'Sistema de notificaciones push',
-        type: 'feature',
+        type: 'hotfix',
         priority: 'low'
       }
     ]
@@ -506,11 +506,10 @@ const getDeployedReleaseItems = (deployment) => {
   // Filtrar solo los items que estaban en el snapshot y ordenar por tipo
   const items = release.items.filter(item => deployment.snapshotItemIds.includes(item.id))
   
-  // Ordenar por tipo: 'fix' primero, luego 'feature'
+  // Ordenar por tipo: 'hotfix' primero, luego 'fix', luego 'feature'
   return items.sort((a, b) => {
-    if (a.type === 'fix' && b.type === 'feature') return -1
-    if (a.type === 'feature' && b.type === 'fix') return 1
-    return 0
+    const typeOrder = { 'hotfix': 1, 'fix': 2, 'feature': 3 }
+    return (typeOrder[a.type] || 999) - (typeOrder[b.type] || 999)
   })
 }
 /**
@@ -1355,6 +1354,11 @@ document.addEventListener('drop', (e) => {
   color: white;
 }
 
+.item-hotfix .item-type {
+  background: #ef4444;
+  color: white;
+}
+
 /* Estilos para release header que acepta drops */
 .release-header.drag-over,
 .deployed-release.drag-over {
@@ -1842,6 +1846,11 @@ document.addEventListener('drop', (e) => {
   color: white;
 }
 
+.deployed-item-detail.item-hotfix .item-type {
+  background: #ef4444;
+  color: white;
+}
+
 .deployed-item-detail .item-title {
   font-weight: 500;
   color: #334155;
@@ -1866,6 +1875,11 @@ document.addEventListener('drop', (e) => {
 .deployed-item-tag.item-fix {
   background: #fef3c7;
   color: #92400e;
+}
+
+.deployed-item-tag.item-hotfix {
+  background: #fecaca;
+  color: #991b1b;
 }
 
 /* ==========================================
