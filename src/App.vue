@@ -9,10 +9,7 @@ import Dashboard from './components/Dashboard.vue';
     <nav class="navbar">
       <div class="navbar-container">
         <h1 class="app-title">Flow Track</h1>
-        <div class="navbar-actions">
-          <span class="status-indicator">●</span>
-          <span class="status-text">En línea</span>
-        </div>
+        
       </div>
     </nav>
     
