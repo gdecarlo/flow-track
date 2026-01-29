@@ -1,283 +1,131 @@
 <template>
-  <div class="deployment-dashboard">
-    
-    <div class="dashboard-container">
-      <!-- Columna Izquierda: Lista de Artefactos -->
-      <div class="left-column">
-        <h2 class="section-title">Artefactos</h2>
-        
-        <!-- Releases con Items -->
-        <div class="releases-container">
-          <div class="subsection-header">
-            <h3 class="subsection-title">Releases</h3>
-            <button 
-              class="add-item-btn"
-              @click="toggleNewReleaseForm"
-              :class="{ 'active': showNewReleaseForm }"
-            >
-              <span class="add-icon">{{ showNewReleaseForm ? '×' : '+' }}</span>
-            </button>
+  <div class="release-dashboard">
+    <section class="release-board">
+      <div class="board-columns">
+        <div
+          v-for="environment in sortedEnvironments"
+          :key="environment.id"
+          class="board-column"
+          @dragover.prevent
+          @dragenter.prevent
+          @drop="handleDrop($event, environment.id)"
+        >
+          <div class="board-column-header">
+            <h3>{{ environment.name }}</h3>
           </div>
 
-          <!-- Formulario para nuevo release -->
-          <div v-if="showNewReleaseForm" class="new-item-form">
-            <input
-              ref="releaseNameInput"
-              v-model="newRelease.name"
-              type="text"
-              placeholder="Numero de release. Ej: 3.2.1"
-              class="item-title-input"
-              :class="{ 'error': isDuplicateRelease }"
-              @keyup.enter="createNewRelease"
-              @keyup.escape="cancelNewRelease"
-            />
-            <div v-if="isDuplicateRelease" class="error-message">
-              ⚠️ Ya existe un release con este nombre
-            </div>
-            <div class="form-controls">
-              <div class="form-buttons">
-                <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim() || isDuplicateRelease">
-                  ✓
-                </button>
-                <button @click="cancelNewRelease" class="cancel-btn">
-                  ×
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            v-for="release in availableReleases" 
-            :key="release.id" 
-            class="release-card"
-          >
-            <div 
-              class="release-header draggable-item"
+          <div class="board-column-body">
+            <div
+              v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'release')"
+              :key="`release-${deployment.itemId}-${environment.id}`"
+              class="release-card draggable-item"
               :data-type="'release'"
-              :data-id="release.id"
+              :data-id="deployment.itemId"
               draggable="true"
               @dragstart="handleDragStart"
               @dragover.prevent
               @dragenter.prevent
-              @drop="handleDropOnRelease($event, release.id)"
+              @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
             >
-              <h3>{{ release.name }}</h3>
-              <p class="release-description">{{ release.description }}</p>
-              <span class="item-count">{{ getAvailableItemsForRelease(release).length }} items disponibles</span>
-            </div>
-            
-            <!-- Items dentro del Release que están disponibles -->
-            <div class="items-container" v-if="getAvailableItemsForRelease(release).length > 0">
-              <div
-                v-for="item in getAvailableItemsForRelease(release)"
-                :key="item.id"
-                class="item-card draggable-item"
-                :class="`item-${item.type}`"
-                :data-type="'item'"
-                :data-id="item.id"
-                :data-release-id="release.id"
-                draggable="true"
-                @dragstart="handleDragStart"
-              >
-                <div class="item-header">
-                  <div class="item-info">
-                    <span class="item-type">{{ item.type }}</span>
-                    <span class="item-title">{{ item.title }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Items sin Release -->
-        <div class="standalone-items">
-          <div class="subsection-header">
-            <h3 class="subsection-title">Items Independientes</h3>
-            <button 
-              class="add-item-btn"
-              @click="toggleNewItemForm"
-              :class="{ 'active': showNewItemForm }"
-            >
-              <span class="add-icon">{{ showNewItemForm ? '×' : '+' }}</span>
-            </button>
-          </div>
-
-          <!-- Formulario para nuevo item -->
-          <div v-if="showNewItemForm" class="new-item-form">
-            <input
-              ref="titleInput"
-              v-model="newItem.title"
-              type="text"
-              placeholder="Título del item..."
-              class="item-title-input"
-              @keyup.enter="createNewItem"
-              @keyup.escape="cancelNewItem"
-            />
-            <div class="form-controls">
-              <select v-model="newItem.type" class="item-type-select">
-                <option value="feature">Feature</option>
-                <option value="fix">Fix</option>
-                <option value="hotfix">Hotfix</option>
-              </select>
-              <div class="form-buttons">
-                <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim()">
-                  ✓
-                </button>
-                <button @click="cancelNewItem" class="cancel-btn">
-                  ×
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-for="item in availableStandaloneItems"
-            :key="item.id"
-            class="item-card draggable-item"
-            :class="`item-${item.type}`"
-            :data-type="'item'"
-            :data-id="item.id"
-            draggable="true"
-            @dragstart="handleDragStart"
-          >
-            <div class="item-header">
-              <div class="item-info">
-                <span class="item-type">{{ item.type }}</span>
-                <span class="item-title">{{ item.title }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Columna Derecha: Tablero Kanban de Ambientes -->
-      <div class="right-column">
-        <div class="section-header">
-          <h2 class="section-title">Ambientes de Despliegue</h2>
-          <button 
-            class="add-item-btn"
-            @click="toggleNewEnvironmentForm"
-            :class="{ 'active': showNewEnvironmentForm }"
-            title="Agregar ambiente"
-          >
-            <span class="add-icon">{{ showNewEnvironmentForm ? '×' : '+' }}</span>
-          </button>
-        </div>
-
-        <!-- Formulario para nuevo ambiente -->
-        <div v-if="showNewEnvironmentForm" class="new-environment-form">
-          <input
-            ref="environmentNameInput"
-            v-model="newEnvironment.name"
-            type="text"
-            placeholder="Nombre del ambiente..."
-            class="environment-name-input"
-            @keyup.enter="createNewEnvironment"
-            @keyup.escape="cancelNewEnvironment"
-          />
-          <div class="form-controls">
-            <div class="form-buttons">
-              <button @click="createNewEnvironment" class="save-btn" :disabled="!newEnvironment.name.trim() || isDuplicateEnvironment">
-                ✓
-              </button>
-              <button @click="cancelNewEnvironment" class="cancel-btn">
-                ×
-              </button>
-            </div>
-          </div>
-          <div v-if="isDuplicateEnvironment" class="error-message">
-            ⚠️ Ya existe un ambiente con este nombre
-          </div>
-        </div>
-        
-        <div class="kanban-board">
-          <div 
-            v-for="environment in sortedEnvironments" 
-            :key="environment.id"
-            class="environment-column"
-            @dragover.prevent
-            @dragenter.prevent
-            @drop="handleDrop($event, environment.id)"
-          >
-            <div class="environment-header">
-              <div class="environment-title">
-                <h3>{{ environment.name }}</h3>
-                <div class="environment-controls">
-                  <button 
-                    @click="moveEnvironmentUp(environment.id)"
-                    class="move-btn"
-                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) <= 0"
-                    title="Mover hacia la izquierda"
-                  >
-                    ◄
-                  </button>
-                  <button 
-                    @click="moveEnvironmentDown(environment.id)"
-                    class="move-btn"
-                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) >= sortedEnvironments.length - 1"
-                    title="Mover hacia la derecha"
-                  >
-                    ►
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="deployments-container">
-              <!-- Releases desplegados -->
-              <div
-                v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'release')"
-                :key="`release-${deployment.itemId}`"
-                class="deployed-release draggable-item"
-                :data-type="'release'"
-                :data-id="deployment.itemId"
-                draggable="true"
-                @dragstart="handleDragStart"
-                @dragover.prevent
-                @dragenter.prevent
-                @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
-              >
-                <div class="deployment-header">
+              <div class="release-card-header">
+                <div>
                   <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
-                  <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
-                </div>
-                <p class="deployment-description">
-                  {{ getReleaseById(deployment.itemId)?.description }}
-                </p>
-                <div class="deployment-items">
-                  <div v-for="item in getDeployedReleaseItems(deployment)" 
-                        :key="item.id" 
-                        class="deployed-item-detail"
-                        :class="`item-${item.type}`">
-                    <span class="item-type" :class="item.type">{{ item.type }}</span>
-                    <span class="item-title">{{ item.title }}</span>
-                  </div>
+                  <p class="release-meta">Desplegado: {{ formatDate(deployment.deployedAt) }}</p>
                 </div>
               </div>
 
-              <!-- Items individuales desplegados -->
-              <div
-                v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'item')"
-                :key="`item-${deployment.itemId}`"
-                class="deployed-item draggable-item"
-                :class="`item-${getItemById(deployment.itemId)?.type}`"
-                :data-type="'item'"
-                :data-id="deployment.itemId"
-                draggable="true"
-                @dragstart="handleDragStart"
-              >
-                <div class="deployment-header">
-                  <span class="item-type">{{ getItemById(deployment.itemId)?.type }}</span>
-                  <span class="item-title">{{ getItemById(deployment.itemId)?.title }}</span>
-                  <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
+              <div class="release-items">
+                <div
+                  v-for="item in getDeployedReleaseItems(deployment)"
+                  :key="item.id"
+                  class="release-item"
+                  :class="`type-${item.type}`"
+                >
+                  <span class="badge" :class="`badge-${item.type}`">
+                    <span v-if="item.type === 'feature'">★ Feature</span>
+                    <span v-else-if="item.type === 'fix'">🔧 Fix</span>
+                    <span v-else>🔥 Hotfix</span>
+                  </span>
+                  <span class="release-item-title">{{ item.title }}</span>
+                  <div class="item-actions">
+                    <span class="icon">ⓘ</span>
+                    <span class="icon">✎</span>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            <div
+              v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'item')"
+              :key="`item-${deployment.itemId}-${environment.id}`"
+              class="release-item-single draggable-item"
+              :class="`type-${getItemById(deployment.itemId)?.type}`"
+              :data-type="'item'"
+              :data-id="deployment.itemId"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <span class="badge" :class="`badge-${getItemById(deployment.itemId)?.type}`">
+                {{ getItemById(deployment.itemId)?.type }}
+              </span>
+              <span class="release-item-title">{{ getItemById(deployment.itemId)?.title }}</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <aside class="release-sidebar">
+      <div class="sidebar-card">
+        <h3>Alta Rápida</h3>
+        <label class="field-label">Número de release</label>
+        <input
+          v-model="newRelease.name"
+          type="text"
+          placeholder="Ej: 3.2.1"
+          class="field-input"
+        />
+        <label class="field-label">Nombre del release</label>
+        <input
+          v-model="newReleaseTitle"
+          type="text"
+          placeholder="Descripción breve"
+          class="field-input"
+        />
+        <button
+          class="action-btn"
+          @click="createNewRelease"
+          :disabled="!newRelease.name.trim() || isDuplicateRelease"
+        >
+          Crear release
+        </button>
+        <p v-if="isDuplicateRelease" class="form-error">⚠️ Ya existe un release con este número</p>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Agregar ítem</h3>
+        <label class="field-label">Tipo</label>
+        <select v-model="newItem.type" class="field-input">
+          <option value="feature">Feature</option>
+          <option value="fix">Fix</option>
+          <option value="hotfix">Hotfix</option>
+        </select>
+        <label class="field-label">Nombre del ítem</label>
+        <input
+          v-model="newItem.title"
+          type="text"
+          placeholder="Nombre del ítem"
+          class="field-input"
+        />
+        <button
+          class="action-btn secondary"
+          @click="createNewItem"
+          :disabled="!newItem.title.trim()"
+        >
+          Agregar al release
+        </button>
+      </div>
+    </aside>
   </div>
 </template>
 
@@ -332,17 +180,10 @@ import { defineComponent, ref, computed } from 'vue'
 // Items independientes (sin release)
 const standaloneItems = ref([
   {
-    id: 'item-1',
-    title: 'Implementar autenticación OAuth',
-    description: 'Agregar soporte para login con Google y GitHub',
+    id: 'item-standalone-1',
+    title: 'Validación de QA',
+    description: 'Checklist de validación funcional',
     type: 'feature',
-    priority: 'high'
-  },
-  {
-    id: 'item-2',
-    title: 'Corregir bug en paginación',
-    description: 'Error al navegar a la última página',
-    type: 'fix',
     priority: 'medium'
   }
 ])
@@ -350,51 +191,37 @@ const standaloneItems = ref([
 // Releases con items
 const releases = ref([
   {
-    id: 'release-1',
-    name: 'Release 2.1.0',
-    description: 'Mejoras de seguridad y nuevas funcionalidades',
+    id: 'release-3-2-1',
+    name: 'Release 3.2.1',
+    description: 'Actualización de permisos y validaciones',
     items: [
       {
-        id: 'item-3',
-        title: 'Dashboard de métricas',
-        description: 'Panel de control con estadísticas en tiempo real',
+        id: 'item-101',
+        title: 'Validación de permisos en inspecciones',
+        description: 'Revisión de permisos por rol',
         type: 'feature',
         priority: 'high'
       },
       {
-        id: 'item-4',
-        title: 'Optimización de consultas SQL',
-        description: 'Mejorar rendimiento de queries complejas',
+        id: 'item-102',
+        title: 'Donación de ítem',
+        description: 'Ajustes en flujos de donación',
         type: 'fix',
         priority: 'medium'
       },
       {
-        id: 'item-5',
-        title: 'API de notificaciones',
-        description: 'Sistema de notificaciones push',
+        id: 'item-103',
+        title: 'Validación del hotfix',
+        description: 'Hotfix crítico para producción',
         type: 'hotfix',
-        priority: 'low'
-      }
-    ]
-  },
-  {
-    id: 'release-2',
-    name: 'Release v2.0.1',
-    description: 'Correcciones críticas y patches de seguridad',
-    items: [
-      {
-        id: 'item-6',
-        title: 'Parche de seguridad XSS',
-        description: 'Corregir vulnerabilidad en formularios',
-        type: 'fix',
         priority: 'critical'
       },
       {
-        id: 'item-7',
-        title: 'Actualizar dependencias',
-        description: 'Actualizar librerías a versiones seguras',
-        type: 'fix',
-        priority: 'high'
+        id: 'item-104',
+        title: 'Validación de QA',
+        description: 'Checklist QA de release',
+        type: 'feature',
+        priority: 'low'
       }
     ]
   }
@@ -403,41 +230,64 @@ const releases = ref([
 // Ambientes de despliegue
 const environments = ref([
   {
-    id: 'test',
-    name: 'Test',
-    description: 'Ambiente de pruebas',
+    id: 'dev',
+    name: 'Desarrollo',
+    description: 'Ambiente de desarrollo',
     order: 1
   },
   {
-    id: 'demo',
-    name: 'Demo',
-    description: 'Ambiente de demostración',
+    id: 'qa',
+    name: 'QA',
+    description: 'Ambiente de QA',
     order: 2
   },
   {
-    id: 'prod',
-    name: 'Prod',
-    description: 'Ambiente de producción',
+    id: 'staging',
+    name: 'Staging',
+    description: 'Ambiente pre-productivo',
     order: 3
+  },
+  {
+    id: 'prod',
+    name: 'Producción',
+    description: 'Ambiente productivo',
+    order: 4
   }
 ])
 
 // Despliegues actuales
 const deployments = ref([
   {
-    id: 'deploy-1',
-    itemId: 'release-2',
+    id: 'deploy-dev',
+    itemId: 'release-3-2-1',
     type: 'release',
-    environmentId: 'test',
-    deployedAt: new Date('2025-07-29T10:30:00'),
-    snapshotItemIds: ['item-6', 'item-7'] // Items que estaban disponibles cuando se desplegó
+    environmentId: 'dev',
+    deployedAt: new Date('2026-01-29T10:30:00'),
+    snapshotItemIds: ['item-101', 'item-102', 'item-103', 'item-104']
   },
   {
-    id: 'deploy-2',
-    itemId: 'item-1',
-    type: 'item',
-    environmentId: 'demo',
-    deployedAt: new Date('2025-07-29T14:15:00')
+    id: 'deploy-qa',
+    itemId: 'release-3-2-1',
+    type: 'release',
+    environmentId: 'qa',
+    deployedAt: new Date('2026-01-29T10:30:00'),
+    snapshotItemIds: ['item-101', 'item-102', 'item-103', 'item-104']
+  },
+  {
+    id: 'deploy-staging',
+    itemId: 'release-3-2-1',
+    type: 'release',
+    environmentId: 'staging',
+    deployedAt: new Date('2026-01-29T10:30:00'),
+    snapshotItemIds: ['item-101', 'item-102', 'item-103', 'item-104']
+  },
+  {
+    id: 'deploy-prod',
+    itemId: 'release-3-2-1',
+    type: 'release',
+    environmentId: 'prod',
+    deployedAt: new Date('2026-01-29T10:30:00'),
+    snapshotItemIds: ['item-101', 'item-102', 'item-103', 'item-104']
   }
 ])
 
@@ -457,6 +307,7 @@ const showNewReleaseForm = ref(false)
 const newRelease = ref({
   name: ''
 })
+const newReleaseTitle = ref('')
 const releaseNameInput = ref(null)
 
 // Variables para el formulario de nuevo ambiente
@@ -693,7 +544,7 @@ const createNewRelease = () => {
   const release = {
     id: `release-${Date.now()}`,
     name: fullReleaseName,
-    description: '', // Descripción vacía como solicitado
+    description: newReleaseTitle.value.trim(),
     items: [] // Inicialmente sin items
   }
 
@@ -722,6 +573,7 @@ const resetNewReleaseForm = () => {
   newRelease.value = {
     name: ''
   }
+  newReleaseTitle.value = ''
 }
 
 // ==========================================
@@ -1115,875 +967,278 @@ document.addEventListener('dragend', () => {
 
 // Efectos visuales para drag over en releases
 document.addEventListener('dragenter', (e) => {
-  if ((e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) && dragData.value?.type === 'item') {
+  if (e.target.classList.contains('release-card') && dragData.value?.type === 'item') {
     e.target.classList.add('drag-over')
   }
 })
 
 document.addEventListener('dragleave', (e) => {
-  if (e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) {
+  if (e.target.classList.contains('release-card')) {
     e.target.classList.remove('drag-over')
   }
 })
 
-document.addEventListener('drop', (e) => {
+document.addEventListener('drop', () => {
   // Limpiar efectos visuales en releases
-  document.querySelectorAll('.release-header, .deployed-release').forEach(el => {
+  document.querySelectorAll('.release-card').forEach(el => {
     el.classList.remove('drag-over')
   })
 })
 </script>
 
 <style scoped>
-/* ==========================================
-   ESTILOS GENERALES
-   ========================================== */
-
-.deployment-dashboard {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin: 0;
-  padding: 24px;
-  background-color: #f8fafc;
-  min-height: calc(100vh - 64px);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.dashboard-title {
-  text-align: center;
-  color: #1e293b;
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 30px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* ==========================================
-   LAYOUT PRINCIPAL
-   ========================================== */
-
-.dashboard-container {
+.release-dashboard {
   display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 30px;
-  height: calc(100vh - 150px);
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+  min-height: calc(100vh - 140px);
+}
+
+.release-board {
   width: 100%;
 }
 
-.left-column, .right-column {
-  background: white;
+.board-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.board-column {
+  background: #eef2f7;
+  border: 1px solid #dbe2ee;
   border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.left-column {
-  overflow-y: auto;
-}
-
-.right-column {
-  overflow: hidden;
-  width: 100%;
-}
-
-.section-title {
-  color: #334155;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 10px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-header .section-title {
-  margin-bottom: 0;
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-/* ==========================================
-   COLUMNA IZQUIERDA - RELEASES E ITEMS
-   ========================================== */
-
-.releases-container {
-  margin-bottom: 30px;
-}
-
-.subsection-title {
-  color: #475569;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.release-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.release-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.release-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 16px;
-  cursor: grab;
-  transition: all 0.2s ease;
-}
-
-.release-header:active {
-  cursor: grabbing;
-}
-
-.release-header h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.release-description {
-  margin: 0 0 8px 0;
-  opacity: 0.9;
-  font-size: 0.9rem;
-}
-
-.item-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-/* Items dentro de releases */
-.items-container {
   padding: 12px;
-  background: #f8fafc;
-}
-
-.item-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 8px;
-  cursor: grab;
-  transition: all 0.2s ease;
-}
-
-.item-card:active {
-  cursor: grabbing;
-}
-
-.item-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.item-info {
+  min-height: 640px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  flex: 1;
 }
 
-.item-type {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.item-title {
-  font-weight: 600;
-  color: #334155;
-  font-size: 0.85rem;
-  line-height: 1.2;
-}
-
-.item-description {
-  color: #64748b;
-  font-size: 0.85rem;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-}
-
-.item-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.75rem;
-}
-
-.item-id {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-/* Colores por tipo de item */
-.item-feature .item-type {
-  background: #10b981;
-  color: white;
-}
-
-.item-fix .item-type {
-  background: #f59e0b;
-  color: white;
-}
-
-.item-hotfix .item-type {
-  background: #ef4444;
-  color: white;
-}
-
-/* Estilos para release header que acepta drops */
-.release-header.drag-over,
-.deployed-release.drag-over {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  transform: scale(1.02);
-}
-
-/* Colores por prioridad */
-.item-priority {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.priority-low {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.priority-medium {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.priority-high {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-.priority-critical {
-  background: #fca5a5;
-  color: #7f1d1d;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* Items independientes */
-.standalone-items {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 20px;
-}
-
-.subsection-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.subsection-title {
-  color: #475569;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.add-item-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid #10b981;
-  background: white;
-  color: #10b981;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1.2rem;
-  font-weight: bold;
-}
-
-.add-item-btn:hover {
-  background: #10b981;
-  color: white;
-  transform: scale(1.1);
-}
-
-.add-item-btn.active {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: white;
-}
-
-.add-item-btn.active:hover {
-  background: #dc2626;
-  border-color: #dc2626;
-}
-
-.add-icon {
-  display: inline-block;
-  transition: transform 0.2s ease;
-}
-
-.add-item-btn.active .add-icon {
-  transform: rotate(45deg);
-}
-
-/* Formulario de nuevo item */
-.new-item-form {
-  background: #f8fafc;
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  animation: slideDown 0.3s ease;
-}
-
-/* Formulario de nuevo ambiente */
-.new-environment-form {
-  background: #f0f9ff;
-  border: 2px dashed #0ea5e9;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-  animation: slideDown 0.3s ease;
-}
-
-.environment-name-input {
-  width: 100%;
-  border: 2px solid #0ea5e9;
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 0.9rem;
+.board-column-header {
+  padding: 8px 8px 12px;
+  border-bottom: 1px solid #dbe2ee;
   margin-bottom: 12px;
-  transition: border-color 0.2s ease;
-  background: white;
-  box-sizing: border-box;
 }
 
-.environment-name-input:focus {
-  outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-}
-
-.environment-name-input::placeholder {
-  color: #94a3b8;
-  font-style: italic;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    max-height: 200px;
-  }
-}
-
-.item-title-input {
-  width: 100%;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 0.9rem;
-  margin-bottom: 12px;
-  transition: border-color 0.2s ease;
-  background: white;
-  box-sizing: border-box;
-}
-
-.item-title-input:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.item-title-input.error {
-  border-color: #ef4444;
-  background: #fef2f2;
-}
-
-.item-title-input.error:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-.item-title-input::placeholder {
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.error-message {
-  color: #ef4444;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.form-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.item-type-select {
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: white;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-  flex: 1;
-}
-
-.item-type-select:focus {
-  outline: none;
-  border-color: #10b981;
-}
-
-.form-buttons {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.save-btn,
-.cancel-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.save-btn {
-  background: #10b981;
-  color: white;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #059669;
-  transform: scale(1.05);
-}
-
-.save-btn:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.cancel-btn {
-  background: #ef4444;
-  color: white;
-}
-
-.cancel-btn:hover {
-  background: #dc2626;
-  transform: scale(1.05);
-}
-
-/* ==========================================
-   COLUMNA DERECHA - TABLERO KANBAN
-   ========================================== */
-
-.kanban-board {
-  display: flex;
-  gap: 16px;
-  height: calc(100vh - 250px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Mejorar apariencia del scrollbar */
-.kanban-board::-webkit-scrollbar {
-  height: 8px;
-}
-
-.kanban-board::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-.kanban-board::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.kanban-board::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.environment-column {
-  background: #f1f5f9;
-  border-radius: 8px;
-  padding: 16px;
-  border: 2px dashed #cbd5e1;
-  transition: all 0.2s ease;
-  overflow-y: auto;
-  min-height: 100%;
-  width: 280px;
-  flex-shrink: 0;
-  flex-grow: 0;
-}
-
-.environment-column:hover {
-  border-color: #94a3b8;
-  background: #e2e8f0;
-}
-
-.environment-header {
-  text-align: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #cbd5e1;
-}
-
-.environment-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.environment-header h3 {
+.board-column-header h3 {
   margin: 0;
-  color: #334155;
-  font-size: 1rem;
-  font-weight: 600;
-  flex: 1;
-  text-align: left;
+  font-size: 1.05rem;
+  color: #1f2937;
+  font-weight: 700;
 }
 
-.environment-controls {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-}
-
-.move-btn {
-  width: 20px;
-  height: 20px;
-  border: 1px solid #cbd5e1;
-  background: white;
-  color: #64748b;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.7rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.move-btn:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #475569;
-  transform: scale(1.1);
-}
-
-.move-btn:disabled {
-  background: #f8fafc;
-  color: #cbd5e1;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.deployment-count {
-  color: #64748b;
-  font-size: 0.8rem;
-  background: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-}
-
-/* Despliegues */
-.deployments-container {
+.board-column-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.deployed-release, .deployed-item {
-  background: white;
-  border-radius: 6px;
+.release-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #3b82f6;
-  cursor: grab;
-  transition: all 0.2s ease;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
 }
 
-.deployed-release:active, .deployed-item:active {
-  cursor: grabbing;
+.release-card.drag-over {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
 }
 
-.deployed-release:hover, .deployed-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.deployed-release {
-  border-left-color: #8b5cf6;
-}
-
-.deployment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.deployment-header h4 {
+.release-card-header h4 {
   margin: 0;
-  color: #334155;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1rem;
+  color: #0f172a;
+  font-weight: 700;
 }
 
-.deployment-date {
-  color: #64748b;
-  font-size: 0.7rem;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
+.release-meta {
+  margin: 4px 0 10px;
+  font-size: 0.78rem;
+  color: #6b7280;
 }
 
-.deployment-description {
-  color: #64748b;
-  font-size: 0.8rem;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-}
-
-.deployment-items {
+.release-items {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.deployed-item-detail {
+.release-item,
+.release-item-single {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.release-item {
   background: #f8fafc;
-  border-radius: 4px;
+  border: 1px solid #e2e8f0;
 }
 
-.deployed-item-detail .item-type {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  min-width: 40px;
-  text-align: center;
+.release-item-single {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
 }
 
-.deployed-item-detail.item-feature .item-type {
-  background: #10b981;
-  color: white;
-}
-
-.deployed-item-detail.item-fix .item-type {
-  background: #f59e0b;
-  color: white;
-}
-
-.deployed-item-detail.item-hotfix .item-type {
-  background: #ef4444;
-  color: white;
-}
-
-.deployed-item-detail .item-title {
-  font-weight: 500;
-  color: #334155;
-  font-size: 0.85rem;
+.release-item-title {
   flex: 1;
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 600;
 }
 
-.deployed-item-tag {
-  background: #e2e8f0;
-  color: #475569;
+.item-actions {
+  display: flex;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.item-actions .icon {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 500;
+  background: #ffffff;
 }
 
-.deployed-item-tag.item-feature {
-  background: #d1fae5;
-  color: #065f46;
+.badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
-.deployed-item-tag.item-fix {
-  background: #fef3c7;
-  color: #92400e;
+.badge-feature {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
-.deployed-item-tag.item-hotfix {
-  background: #fecaca;
-  color: #991b1b;
+.badge-fix {
+  background: #dcfce7;
+  color: #15803d;
 }
 
-/* ==========================================
-   EFECTOS DRAG AND DROP
-   ========================================== */
+.badge-hotfix {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.release-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar-card h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.field-input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  background: #ffffff;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+.action-btn {
+  width: 100%;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #7c8ca6;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #66748b;
+}
+
+.action-btn.secondary {
+  background: #94a3b8;
+}
+
+.action-btn.secondary:hover {
+  background: #7c8ca6;
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-error {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #ef4444;
+}
 
 .draggable-item {
   position: relative;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .draggable-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-2px);
 }
 
-.draggable-item[draggable="true"]:hover::after {
-  content: "📌 Arrastra para desplegar";
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1f2937;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  white-space: nowrap;
-  z-index: 1000;
+.board-column.drag-over {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
 }
 
-/* Estados durante drag */
-.environment-column.drag-over {
-  border-color: #3b82f6;
-  background: #dbeafe;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-/* ==========================================
-   RESPONSIVE DESIGN
-   ========================================== */
-
-@media (max-width: 1024px) {
-  .dashboard-container {
+@media (max-width: 1200px) {
+  .release-dashboard {
     grid-template-columns: 1fr;
-    gap: 20px;
   }
-  
-  .kanban-board {
-    display: flex;
-    overflow-x: auto;
-    height: auto;
-    width: 100%;
-  }
-  
-  .environment-column {
-    min-height: 400px;
-    width: 280px;
-    flex-shrink: 0;
+
+  .board-columns {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .deployment-dashboard {
-    padding: 16px;
+  .board-columns {
+    grid-template-columns: 1fr;
   }
-  
-  .dashboard-title {
-    font-size: 1.5rem;
-  }
-  
-  .kanban-board {
-    display: flex;
-    overflow-x: auto;
-    height: auto;
-    width: 100%;
-  }
-  
-  .environment-column {
-    min-height: 400px;
-    width: 250px;
-    flex-shrink: 0;
-    overflow-y: auto;
-  }
-  
-  .left-column, .right-column {
-    padding: 16px;
-  }
-}
 
-/* ==========================================
-   UTILIDADES
-   ========================================== */
-
-.text-truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
+  .board-column {
+    min-height: auto;
+  }
 }
 </style>
