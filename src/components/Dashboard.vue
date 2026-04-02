@@ -1,7 +1,23 @@
 <template>
   <div class="deployment-dashboard">
-    
-    <div class="dashboard-container">
+    <div v-if="isReady" class="dashboard-status-bar" :class="{ 'has-error': persistenceError }">
+      <span>{{ isSaving ? 'Guardando cambios en Supabase...' : 'Supabase conectado' }}</span>
+      <span v-if="lastSavedLabel" class="status-meta">{{ lastSavedLabel }}</span>
+      <span v-if="persistenceError" class="status-error">{{ persistenceError }}</span>
+    </div>
+
+    <div v-if="isInitializing" class="dashboard-state-panel">
+      <h2 class="dashboard-state-title">Cargando tablero</h2>
+      <p class="dashboard-state-copy">Recuperando el snapshot compartido desde Supabase.</p>
+    </div>
+
+    <div v-else-if="!isReady" class="dashboard-state-panel error-state">
+      <h2 class="dashboard-state-title">No se pudo inicializar la persistencia</h2>
+      <p class="dashboard-state-copy">{{ persistenceError || 'Revisa la configuración de Supabase y vuelve a intentar.' }}</p>
+      <button class="state-action-btn" @click="retryInitialize">Reintentar</button>
+    </div>
+
+    <div v-else class="dashboard-container">
       <!-- Columna Izquierda: Lista de Artefactos -->
       <div class="left-column">
         <h2 class="section-title">Artefactos</h2>
@@ -13,6 +29,7 @@
             <button 
               class="add-item-btn"
               @click="toggleNewReleaseForm"
+              :disabled="isBusy"
               :class="{ 'active': showNewReleaseForm }"
             >
               <span class="add-icon">{{ showNewReleaseForm ? '×' : '+' }}</span>
@@ -26,6 +43,7 @@
               v-model="newRelease.name"
               type="text"
               placeholder="Numero de release. Ej: 3.2.1"
+              :disabled="isBusy"
               class="item-title-input"
               :class="{ 'error': isDuplicateRelease }"
               @keyup.enter="createNewRelease"
@@ -39,7 +57,7 @@
                 <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim() || isDuplicateRelease">
                   ✓
                 </button>
-                <button @click="cancelNewRelease" class="cancel-btn">
+                <button @click="cancelNewRelease" class="cancel-btn" :disabled="isSaving">
                   ×
                 </button>
               </div>
@@ -55,7 +73,7 @@
               class="release-header draggable-item"
               :data-type="'release'"
               :data-id="release.id"
-              draggable="true"
+              :draggable="!isBusy"
               @dragstart="handleDragStart"
               @dragover.prevent
               @dragenter.prevent
@@ -108,6 +126,7 @@
             <button 
               class="add-item-btn"
               @click="toggleNewItemForm"
+              :disabled="isBusy"
               :class="{ 'active': showNewItemForm }"
             >
               <span class="add-icon">{{ showNewItemForm ? '×' : '+' }}</span>
@@ -121,21 +140,22 @@
               v-model="newItem.title"
               type="text"
               placeholder="Título del item..."
+              :disabled="isBusy"
               class="item-title-input"
               @keyup.enter="createNewItem"
               @keyup.escape="cancelNewItem"
             />
             <div class="form-controls">
-              <select v-model="newItem.type" class="item-type-select">
+              <select v-model="newItem.type" class="item-type-select" :disabled="isBusy">
                 <option value="feature">Feature</option>
                 <option value="fix">Fix</option>
                 <option value="hotfix">Hotfix</option>
               </select>
               <div class="form-buttons">
-                <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim()">
+                <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim() || isBusy">
                   ✓
                 </button>
-                <button @click="cancelNewItem" class="cancel-btn">
+                <button @click="cancelNewItem" class="cancel-btn" :disabled="isSaving">
                   ×
                 </button>
               </div>
@@ -149,7 +169,7 @@
             :class="`item-${item.type}`"
             :data-type="'item'"
             :data-id="item.id"
-            draggable="true"
+            :draggable="!isBusy"
             @dragstart="handleDragStart"
           >
             <div class="item-header">
@@ -180,6 +200,7 @@
           <button 
             class="add-item-btn"
             @click="toggleNewEnvironmentForm"
+            :disabled="isBusy"
             :class="{ 'active': showNewEnvironmentForm }"
             title="Agregar ambiente"
           >
@@ -194,16 +215,17 @@
             v-model="newEnvironment.name"
             type="text"
             placeholder="Nombre del ambiente..."
+            :disabled="isBusy"
             class="environment-name-input"
             @keyup.enter="createNewEnvironment"
             @keyup.escape="cancelNewEnvironment"
           />
           <div class="form-controls">
             <div class="form-buttons">
-              <button @click="createNewEnvironment" class="save-btn" :disabled="!newEnvironment.name.trim() || isDuplicateEnvironment">
+              <button @click="createNewEnvironment" class="save-btn" :disabled="!newEnvironment.name.trim() || isDuplicateEnvironment || isBusy">
                 ✓
               </button>
-              <button @click="cancelNewEnvironment" class="cancel-btn">
+              <button @click="cancelNewEnvironment" class="cancel-btn" :disabled="isSaving">
                 ×
               </button>
             </div>
@@ -229,7 +251,7 @@
                   <button 
                     @click="moveEnvironmentUp(environment.id)"
                     class="move-btn"
-                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) <= 0"
+                    :disabled="isBusy || sortedEnvironments.findIndex(env => env.id === environment.id) <= 0"
                     title="Mover hacia la izquierda"
                   >
                     ◄
@@ -237,7 +259,7 @@
                   <button 
                     @click="moveEnvironmentDown(environment.id)"
                     class="move-btn"
-                    :disabled="sortedEnvironments.findIndex(env => env.id === environment.id) >= sortedEnvironments.length - 1"
+                    :disabled="isBusy || sortedEnvironments.findIndex(env => env.id === environment.id) >= sortedEnvironments.length - 1"
                     title="Mover hacia la derecha"
                   >
                     ►
@@ -254,7 +276,7 @@
                 class="deployed-release draggable-item"
                 :data-type="'release'"
                 :data-id="deployment.itemId"
-                draggable="true"
+                :draggable="!isBusy"
                 @dragstart="handleDragStart"
                 @dragover.prevent
                 @dragenter.prevent
@@ -293,7 +315,7 @@
                 :class="`item-${getItemById(deployment.itemId)?.type}`"
                 :data-type="'item'"
                 :data-id="deployment.itemId"
-                draggable="true"
+                :draggable="!isBusy"
                 @dragstart="handleDragStart"
               >
                 <div class="deployment-header">
@@ -318,169 +340,40 @@
 </template>
 
 <script setup>
-import { defineComponent, ref, computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
-// ==========================================
-// MODELOS DE DATOS
-// ==========================================
+import { useFlowTrackDomain } from '../composables/useFlowTrackDomain'
 
-/**
- * Modelo de Item
- * @typedef {Object} Item
- * @property {string} id - Identificador único
- * @property {string} title - Título del item
- * @property {string} description - Descripción del item
- * @property {'feature'|'fix'|'hotfix'} type - Tipo de item
- */
+const {
+  initialize,
+  isInitializing,
+  isSaving,
+  isReady,
+  persistenceError,
+  lastSavedAt,
+  availableReleases,
+  availableStandaloneItems,
+  sortedEnvironments,
+  formatDate,
+  getAvailableItemsForRelease,
+  getDeploymentsByEnvironment,
+  getReleaseById,
+  getItemById,
+  getDeployedReleaseItems,
+  hasDuplicateReleaseName,
+  hasDuplicateEnvironmentName,
+  createNewItem: createDomainItem,
+  createNewRelease: createDomainRelease,
+  createNewEnvironment: createDomainEnvironment,
+  moveEnvironmentUp: persistMoveEnvironmentUp,
+  moveEnvironmentDown: persistMoveEnvironmentDown,
+  addItemToRelease,
+  addItemToActiveRelease,
+  deployArtifact
+} = useFlowTrackDomain()
 
-/**
- * Modelo de Release
- * @typedef {Object} Release
- * @property {string} id - Identificador único
- * @property {string} name - Nombre del release
- * @property {string} description - Descripción del release
- * @property {Item[]} items - Array de items incluidos
- */
-
-/**
- * Modelo de Ambiente
- * @typedef {Object} Environment
- * @property {string} id - Identificador único
- * @property {string} name - Nombre del ambiente
- * @property {string} description - Descripción del ambiente
- */
-
-/**
- * Modelo de Despliegue
- * @typedef {Object} Deployment
- * @property {string} id - Identificador único
- * @property {string} itemId - ID del item o release desplegado
- * @property {'item'|'release'} type - Tipo de despliegue
- * @property {string} environmentId - ID del ambiente
- * @property {Date} deployedAt - Fecha de despliegue
- * @property {string[]} snapshotItemIds - Solo para releases: IDs de items que estaban disponibles al momento del despliegue
- */
-
-// ==========================================
-// DATOS REACTIVOS
-// ==========================================
-
-// Items independientes (sin release)
-const standaloneItems = ref([
-  {
-    id: 'item-1',
-    title: 'Implementar autenticación OAuth',
-    description: 'Agregar soporte para login con Google y GitHub',
-    type: 'feature',
-    priority: 'high'
-  },
-  {
-    id: 'item-2',
-    title: 'Corregir bug en paginación',
-    description: 'Error al navegar a la última página',
-    type: 'fix',
-    priority: 'medium'
-  }
-])
-
-// Releases con items
-const releases = ref([
-  {
-    id: 'release-1',
-    name: 'Release 2.1.0',
-    description: 'Mejoras de seguridad y nuevas funcionalidades',
-    items: [
-      {
-        id: 'item-3',
-        title: 'Dashboard de métricas',
-        description: 'Panel de control con estadísticas en tiempo real',
-        type: 'feature',
-        priority: 'high'
-      },
-      {
-        id: 'item-4',
-        title: 'Optimización de consultas SQL',
-        description: 'Mejorar rendimiento de queries complejas',
-        type: 'fix',
-        priority: 'medium'
-      },
-      {
-        id: 'item-5',
-        title: 'API de notificaciones',
-        description: 'Sistema de notificaciones push',
-        type: 'hotfix',
-        priority: 'low'
-      }
-    ]
-  },
-  {
-    id: 'release-2',
-    name: 'Release v2.0.1',
-    description: 'Correcciones críticas y patches de seguridad',
-    items: [
-      {
-        id: 'item-6',
-        title: 'Parche de seguridad XSS',
-        description: 'Corregir vulnerabilidad en formularios',
-        type: 'fix',
-        priority: 'critical'
-      },
-      {
-        id: 'item-7',
-        title: 'Actualizar dependencias',
-        description: 'Actualizar librerías a versiones seguras',
-        type: 'fix',
-        priority: 'high'
-      }
-    ]
-  }
-])
-
-// Ambientes de despliegue
-const environments = ref([
-  {
-    id: 'test',
-    name: 'Test',
-    description: 'Ambiente de pruebas',
-    order: 1
-  },
-  {
-    id: 'demo',
-    name: 'Demo',
-    description: 'Ambiente de demostración',
-    order: 2
-  },
-  {
-    id: 'prod',
-    name: 'Prod',
-    description: 'Ambiente de producción',
-    order: 3
-  }
-])
-
-// Despliegues actuales
-const deployments = ref([
-  {
-    id: 'deploy-1',
-    itemId: 'release-2',
-    type: 'release',
-    environmentId: 'test',
-    deployedAt: new Date('2025-07-29T10:30:00'),
-    snapshotItemIds: ['item-6', 'item-7'] // Items que estaban disponibles cuando se desplegó
-  },
-  {
-    id: 'deploy-2',
-    itemId: 'item-1',
-    type: 'item',
-    environmentId: 'demo',
-    deployedAt: new Date('2025-07-29T14:15:00')
-  }
-])
-
-// Variable para almacenar datos del drag
 const dragData = ref(null)
 
-// Variables para el formulario de nuevo item
 const showNewItemForm = ref(false)
 const newItem = ref({
   title: '',
@@ -488,195 +381,69 @@ const newItem = ref({
 })
 const titleInput = ref(null)
 
-// Variables para el formulario de nuevo release
 const showNewReleaseForm = ref(false)
 const newRelease = ref({
   name: ''
 })
 const releaseNameInput = ref(null)
 
-// Variables para el formulario de nuevo ambiente
 const showNewEnvironmentForm = ref(false)
 const newEnvironment = ref({
   name: ''
 })
 const environmentNameInput = ref(null)
 
-// ==========================================
-// MÉTODOS COMPUTADOS
-// ==========================================
-
-/**
- * Obtiene releases que no están desplegados en ningún ambiente
- */
-const availableReleases = computed(() => {
-  const deployedReleaseIds = deployments.value
-    .filter(d => d.type === 'release')
-    .map(d => d.itemId)
-  
-  return releases.value.filter(r => !deployedReleaseIds.includes(r.id))
-})
-
-/**
- * Obtiene items standalone que no están desplegados en ningún ambiente
- */
-const availableStandaloneItems = computed(() => {
-  const deployedItemIds = deployments.value
-    .filter(d => d.type === 'item')
-    .map(d => d.itemId)
-  
-  return standaloneItems.value.filter(i => !deployedItemIds.includes(i.id))
-})
-
-/**
- * Obtiene los items que estaban disponibles cuando se desplegó un release
- */
-const getDeployedReleaseItems = (deployment) => {
-  if (deployment.type !== 'release' || !deployment.snapshotItemIds) {
-    return []
-  }
-  
-  const release = getReleaseById(deployment.itemId)
-  if (!release) return []
-  
-  // Filtrar solo los items que estaban en el snapshot y ordenar por tipo
-  const items = release.items.filter(item => deployment.snapshotItemIds.includes(item.id))
-  
-  // Ordenar por tipo: 'hotfix' primero, luego 'fix', luego 'feature'
-  return items.sort((a, b) => {
-    const typeOrder = { 'hotfix': 1, 'fix': 2, 'feature': 3 }
-    return (typeOrder[a.type] || 999) - (typeOrder[b.type] || 999)
-  })
-}
-/**
- * Para cada release disponible, filtrar sus items que no están desplegados individualmente
- */
-const getAvailableItemsForRelease = (release) => {
-  const deployedItemIds = deployments.value
-    .filter(d => d.type === 'item')
-    .map(d => d.itemId)
-  
-  return release.items.filter(i => !deployedItemIds.includes(i.id))
-}
-
-/**
- * Verifica si el nombre del release a crear ya existe
- */
 const isDuplicateRelease = computed(() => {
-  if (!newRelease.value.name.trim()) return false
-  
-  const fullReleaseName = `Release ${newRelease.value.name.trim()}`
-  return releases.value.some(r => r.name === fullReleaseName)
+  return hasDuplicateReleaseName(newRelease.value.name)
 })
 
-/**
- * Verifica si el nombre del ambiente a crear ya existe
- */
 const isDuplicateEnvironment = computed(() => {
-  if (!newEnvironment.value.name.trim()) return false
-  
-  return environments.value.some(env => env.name.toLowerCase() === newEnvironment.value.name.trim().toLowerCase())
+  return hasDuplicateEnvironmentName(newEnvironment.value.name)
 })
 
-/**
- * Obtiene los ambientes ordenados por su propiedad order
- */
-const sortedEnvironments = computed(() => {
-  return [...environments.value].sort((a, b) => (a.order || 999) - (b.order || 999))
+const isBusy = computed(() => {
+  return isInitializing.value || isSaving.value
 })
 
-/**
- * Obtiene los despliegues de un ambiente específico
- */
-const getDeploymentsByEnvironment = (environmentId) => {
-  return deployments.value.filter(d => d.environmentId === environmentId)
-}
-
-/**
- * Busca un release por ID
- */
-const getReleaseById = (releaseId) => {
-  return releases.value.find(r => r.id === releaseId)
-}
-
-/**
- * Busca un item por ID (en releases o standalone)
- */
-const getItemById = (itemId) => {
-  // Buscar en items standalone
-  let item = standaloneItems.value.find(i => i.id === itemId)
-  if (item) return item
-
-  // Buscar en items de releases
-  for (const release of releases.value) {
-    item = release.items.find(i => i.id === itemId)
-    if (item) return item
+const lastSavedLabel = computed(() => {
+  if (!lastSavedAt.value) {
+    return ''
   }
-  return null
+
+  return `Último guardado ${formatDate(lastSavedAt.value)}`
+})
+
+const ensureInteractive = () => {
+  if (isInitializing.value) {
+    console.warn('⏳ El tablero todavía está cargando desde Supabase')
+    return false
+  }
+
+  if (isSaving.value) {
+    console.warn('⏳ Espera a que termine el guardado actual')
+    return false
+  }
+
+  if (!isReady.value) {
+    console.warn(persistenceError.value || '❌ La persistencia no está disponible')
+    return false
+  }
+
+  return true
 }
 
-// ==========================================
-// FUNCIONALIDAD NUEVO ITEM
-// ==========================================
-
-/**
- * Muestra/oculta el formulario de nuevo item
- */
-const toggleNewItemForm = () => {
-  showNewItemForm.value = !showNewItemForm.value
-  
-  if (showNewItemForm.value) {
-    // Focus en el input después del próximo tick del DOM
-    setTimeout(() => {
-      titleInput.value?.focus()
-    }, 50)
-  } else {
-    // Resetear formulario al cerrar
-    resetNewItemForm()
+const retryInitialize = async () => {
+  const result = await initialize()
+  if (!result.ok) {
+    console.warn(result.reason)
   }
 }
 
-/**
- * Crea un nuevo item independiente
- */
-const createNewItem = () => {
-  const title = newItem.value.title.trim()
-  
-  if (!title) {
-    console.warn('❌ El título del item es requerido')
-    return
-  }
-
-  // Crear nuevo item
-  const item = {
-    id: `item-${Date.now()}`,
-    title: title,
-    description: `Item creado el ${formatDate(new Date())}`,
-    type: newItem.value.type,
-    priority: 'medium' // Valor por defecto
-  }
-
-  // Agregar a la lista de items standalone
-  standaloneItems.value.push(item)
-
-  console.log(`✅ Nuevo item creado: ${item.title}`)
-
-  // Resetear formulario y cerrar
-  resetNewItemForm()
-  showNewItemForm.value = false
+const focusInput = async inputRef => {
+  await nextTick()
+  inputRef.value?.focus()
 }
 
-/**
- * Cancela la creación del nuevo item
- */
-const cancelNewItem = () => {
-  resetNewItemForm()
-  showNewItemForm.value = false
-}
-
-/**
- * Resetea el formulario de nuevo item
- */
 const resetNewItemForm = () => {
   newItem.value = {
     title: '',
@@ -684,330 +451,199 @@ const resetNewItemForm = () => {
   }
 }
 
-// ==========================================
-// FUNCIONALIDAD NUEVO RELEASE
-// ==========================================
-
-/**
- * Muestra/oculta el formulario de nuevo release
- */
-const toggleNewReleaseForm = () => {
-  showNewReleaseForm.value = !showNewReleaseForm.value
-  
-  if (showNewReleaseForm.value) {
-    // Focus en el input después del próximo tick del DOM
-    setTimeout(() => {
-      releaseNameInput.value?.focus()
-    }, 50)
-  } else {
-    // Resetear formulario al cerrar
-    resetNewReleaseForm()
-  }
-}
-
-/**
- * Crea un nuevo release
- */
-const createNewRelease = () => {
-  const name = newRelease.value.name.trim()
-  
-  if (!name) {
-    console.warn('❌ El nombre del release es requerido')
-    return
-  }
-
-  const fullReleaseName = `Release ${name}`
-
-  // Verificar que no exista ya un release con el mismo nombre
-  const existingRelease = releases.value.find(r => r.name === fullReleaseName)
-  if (existingRelease) {
-    console.warn(`❌ Ya existe un release con el nombre "${fullReleaseName}"`)
-    return
-  }
-
-  // Crear nuevo release con "Release" agregado al nombre
-  const release = {
-    id: `release-${Date.now()}`,
-    name: fullReleaseName,
-    description: '', // Descripción vacía como solicitado
-    items: [] // Inicialmente sin items
-  }
-
-  // Agregar a la lista de releases
-  releases.value.push(release)
-
-  console.log(`✅ Nuevo release creado: ${release.name}`)
-
-  // Resetear formulario y cerrar
-  resetNewReleaseForm()
-  showNewReleaseForm.value = false
-}
-
-/**
- * Cancela la creación del nuevo release
- */
-const cancelNewRelease = () => {
-  resetNewReleaseForm()
-  showNewReleaseForm.value = false
-}
-
-/**
- * Resetea el formulario de nuevo release
- */
 const resetNewReleaseForm = () => {
   newRelease.value = {
     name: ''
   }
 }
 
-// ==========================================
-// FUNCIONALIDAD NUEVO AMBIENTE
-// ==========================================
-
-/**
- * Muestra/oculta el formulario de nuevo ambiente
- */
-const toggleNewEnvironmentForm = () => {
-  showNewEnvironmentForm.value = !showNewEnvironmentForm.value
-  
-  if (showNewEnvironmentForm.value) {
-    // Focus en el input después del próximo tick del DOM
-    setTimeout(() => {
-      environmentNameInput.value?.focus()
-    }, 50)
-  } else {
-    // Resetear formulario al cerrar
-    resetNewEnvironmentForm()
-  }
-}
-
-/**
- * Crea un nuevo ambiente
- */
-const createNewEnvironment = () => {
-  const name = newEnvironment.value.name.trim()
-  
-  if (!name) {
-    console.warn('❌ El nombre del ambiente es requerido')
-    return
-  }
-
-  // Verificar que no exista ya un ambiente con el mismo nombre
-  const existingEnvironment = environments.value.find(env => env.name.toLowerCase() === name.toLowerCase())
-  if (existingEnvironment) {
-    console.warn(`❌ Ya existe un ambiente con el nombre "${name}"`)
-    return
-  }
-
-  // Obtener el siguiente número de orden
-  const maxOrder = Math.max(...environments.value.map(env => env.order || 0), 0)
-
-  // Crear nuevo ambiente
-  const environment = {
-    id: `env-${Date.now()}`,
-    name: name,
-    description: `Ambiente ${name}`,
-    order: maxOrder + 1
-  }
-
-  // Agregar a la lista de ambientes
-  environments.value.push(environment)
-
-  console.log(`✅ Nuevo ambiente creado: ${environment.name}`)
-
-  // Resetear formulario y cerrar
-  resetNewEnvironmentForm()
-  showNewEnvironmentForm.value = false
-}
-
-/**
- * Cancela la creación del nuevo ambiente
- */
-const cancelNewEnvironment = () => {
-  resetNewEnvironmentForm()
-  showNewEnvironmentForm.value = false
-}
-
-/**
- * Resetea el formulario de nuevo ambiente
- */
 const resetNewEnvironmentForm = () => {
   newEnvironment.value = {
     name: ''
   }
 }
 
-/**
- * Mueve un ambiente hacia arriba en el orden
- */
-const moveEnvironmentUp = (environmentId) => {
-  const sortedEnvs = sortedEnvironments.value
-  const envIndex = sortedEnvs.findIndex(env => env.id === environmentId)
-  if (envIndex <= 0) return // Ya está en la primera posición o no existe
-  
-  const currentEnv = sortedEnvs[envIndex]
-  const prevEnv = sortedEnvs[envIndex - 1]
-  
-  // Intercambiar órdenes
-  const tempOrder = currentEnv.order
-  currentEnv.order = prevEnv.order
-  prevEnv.order = tempOrder
-  
-  console.log(`◄ Ambiente ${currentEnv.name} movido hacia la izquierda`)
+const toggleNewItemForm = async () => {
+  if (!showNewItemForm.value && !ensureInteractive()) {
+    return
+  }
+
+  showNewItemForm.value = !showNewItemForm.value
+
+  if (showNewItemForm.value) {
+    await focusInput(titleInput)
+    return
+  }
+
+  resetNewItemForm()
 }
 
-/**
- * Mueve un ambiente hacia abajo en el orden
- */
-const moveEnvironmentDown = (environmentId) => {
-  const sortedEnvs = sortedEnvironments.value
-  const envIndex = sortedEnvs.findIndex(env => env.id === environmentId)
-  if (envIndex >= sortedEnvs.length - 1 || envIndex === -1) return // Ya está en la última posición o no existe
-  
-  const currentEnv = sortedEnvs[envIndex]
-  const nextEnv = sortedEnvs[envIndex + 1]
-  
-  // Intercambiar órdenes
-  const tempOrder = currentEnv.order
-  currentEnv.order = nextEnv.order
-  nextEnv.order = tempOrder
-  
-  console.log(`► Ambiente ${currentEnv.name} movido hacia la derecha`)
+const toggleNewReleaseForm = async () => {
+  if (!showNewReleaseForm.value && !ensureInteractive()) {
+    return
+  }
+
+  showNewReleaseForm.value = !showNewReleaseForm.value
+
+  if (showNewReleaseForm.value) {
+    await focusInput(releaseNameInput)
+    return
+  }
+
+  resetNewReleaseForm()
 }
 
-// ==========================================
-// FUNCIONALIDAD DRAG AND DROP
-// ==========================================
+const toggleNewEnvironmentForm = async () => {
+  if (!showNewEnvironmentForm.value && !ensureInteractive()) {
+    return
+  }
 
-/**
- * Maneja el drop en releases desplegados en ambientes (para agregar items desde otros ambientes)
- */
-const handleDropOnDeployedRelease = (event, releaseId) => {
+  showNewEnvironmentForm.value = !showNewEnvironmentForm.value
+
+  if (showNewEnvironmentForm.value) {
+    await focusInput(environmentNameInput)
+    return
+  }
+
+  resetNewEnvironmentForm()
+}
+
+const createNewItem = async () => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await createDomainItem(newItem.value)
+  if (!result.ok) {
+    console.warn(result.reason)
+    return
+  }
+
+  resetNewItemForm()
+  showNewItemForm.value = false
+}
+
+const cancelNewItem = () => {
+  resetNewItemForm()
+  showNewItemForm.value = false
+}
+
+const createNewRelease = async () => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await createDomainRelease(newRelease.value.name)
+  if (!result.ok) {
+    console.warn(result.reason)
+    return
+  }
+
+  resetNewReleaseForm()
+  showNewReleaseForm.value = false
+}
+
+const cancelNewRelease = () => {
+  resetNewReleaseForm()
+  showNewReleaseForm.value = false
+}
+
+const createNewEnvironment = async () => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await createDomainEnvironment(newEnvironment.value.name)
+  if (!result.ok) {
+    console.warn(result.reason)
+    return
+  }
+
+  resetNewEnvironmentForm()
+  showNewEnvironmentForm.value = false
+}
+
+const cancelNewEnvironment = () => {
+  resetNewEnvironmentForm()
+  showNewEnvironmentForm.value = false
+}
+
+const clearDragState = () => {
+  resetDragVisuals()
+  dragData.value = null
+}
+
+const handleDropOnDeployedRelease = async (event, releaseId) => {
   event.preventDefault()
   event.stopPropagation()
-  
+
+  if (!ensureInteractive()) {
+    clearDragState()
+    return
+  }
+
   if (!dragData.value) {
     console.warn('❌ No hay datos de drag disponibles')
     return
   }
 
-  const { type, id } = dragData.value
-  
-  // Solo permitir agregar items a releases
-  if (type !== 'item') {
+  if (dragData.value.type !== 'item') {
     console.warn('❌ Solo se pueden agregar items a releases')
-    resetDragVisuals()
+    clearDragState()
     return
   }
 
-  // Obtener el item y el release
-  const item = getItemById(id)
-  const release = getReleaseById(releaseId)
-  
-  if (!item || !release) {
-    console.warn('❌ Item o release no encontrado')
-    resetDragVisuals()
+  const result = await addItemToActiveRelease(dragData.value.id, releaseId)
+  if (!result.ok) {
+    console.warn(result.reason)
+    clearDragState()
     return
   }
 
-  // Verificar que el item no esté ya en este release
-  const itemAlreadyInRelease = release.items.some(i => i.id === id)
-  if (itemAlreadyInRelease) {
-    console.warn('❌ Este item ya está en el release')
-    resetDragVisuals()
-    return
-  }
-
-  // Remover el despliegue individual del item si existe
-  deployments.value = deployments.value.filter(d => d.itemId !== id)
-
-  // Si el item estaba en items standalone, removerlo de ahí
-  const isStandalone = standaloneItems.value.some(i => i.id === id)
-  if (isStandalone) {
-    standaloneItems.value = standaloneItems.value.filter(i => i.id !== id)
-  } else {
-    // Si no era standalone, estaba en otro release, removerlo de ahí
-    for (const rel of releases.value) {
-      if (rel.id !== releaseId) {
-        rel.items = rel.items.filter(i => i.id !== id)
-      }
-    }
-  }
-
-  // Agregar el item al release destino
-  release.items.push(item)
-
-  // Actualizar el snapshot del release desplegado si existe
-  const releaseDeployment = deployments.value.find(d => d.itemId === releaseId && d.type === 'release')
-  if (releaseDeployment && releaseDeployment.snapshotItemIds) {
-    if (!releaseDeployment.snapshotItemIds.includes(id)) {
-      releaseDeployment.snapshotItemIds.push(id)
-    }
-  }
-
-  console.log(`✅ Item ${id} agregado al release desplegado ${releaseId}`)
-
-  // Limpiar datos del drag
-  dragData.value = null
-  resetDragVisuals()
+  console.log(`✅ Item ${dragData.value.id} agregado al release desplegado ${releaseId}`)
+  clearDragState()
 }
 
-/**
- * Maneja el drop en los releases (para agregar items independientes)
- */
-const handleDropOnRelease = (event, releaseId) => {
+const handleDropOnRelease = async (event, releaseId) => {
   event.preventDefault()
   event.stopPropagation()
-  
+
+  if (!ensureInteractive()) {
+    clearDragState()
+    return
+  }
+
   if (!dragData.value) {
     console.warn('❌ No hay datos de drag disponibles')
     return
   }
 
-  const { type, id } = dragData.value
-  
-  // Solo permitir agregar items independientes a releases
-  if (type !== 'item') {
+  if (dragData.value.type !== 'item') {
     console.warn('❌ Solo se pueden agregar items a releases')
-    resetDragVisuals()
+    clearDragState()
     return
   }
 
-  // Verificar que el item sea standalone (no esté en otro release)
-  const item = getItemById(id)
-  const isStandalone = standaloneItems.value.some(i => i.id === id)
-  
-  if (!isStandalone) {
-    console.warn('❌ Este item ya pertenece a un release')
-    resetDragVisuals()
+  const result = await addItemToRelease(dragData.value.id, releaseId)
+  if (!result.ok) {
+    console.warn(result.reason)
+    clearDragState()
     return
   }
 
-  // Agregar el item al release
-  const release = getReleaseById(releaseId)
-  if (release) {
-    // Remover de items standalone
-    standaloneItems.value = standaloneItems.value.filter(i => i.id !== id)
-    
-    // Agregar al release
-    release.items.push(item)
-    
-    console.log(`✅ Item ${id} agregado al release ${releaseId}`)
-  }
-
-  // Limpiar datos del drag
-  dragData.value = null
-  resetDragVisuals()
+  console.log(`✅ Item ${dragData.value.id} agregado al release ${releaseId}`)
+  clearDragState()
 }
 
-/**
- * Maneja el inicio del drag
- */
-const handleDragStart = (event) => {
-  const element = event.target
-  const type = element.dataset.type
-  const id = element.dataset.id
-  const releaseId = element.dataset.releaseId
+const handleDragStart = event => {
+  if (!ensureInteractive()) {
+    event.preventDefault()
+    clearDragState()
+    return
+  }
+
+  const element = event.currentTarget
+  const { type, id, releaseId } = element.dataset
 
   dragData.value = {
     type,
@@ -1015,158 +651,110 @@ const handleDragStart = (event) => {
     releaseId
   }
 
-  // Efectos visuales durante el drag
   element.style.opacity = '0.5'
-  
   console.log(`🚀 Iniciando drag: ${type} ${id}`, dragData.value)
 }
 
-/**
- * Maneja el drop en los ambientes
- */
-const handleDrop = (event, environmentId) => {
+const moveEnvironmentUp = async environmentId => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await persistMoveEnvironmentUp(environmentId)
+  if (!result.ok) {
+    console.warn(result.reason)
+  }
+}
+
+const moveEnvironmentDown = async environmentId => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await persistMoveEnvironmentDown(environmentId)
+  if (!result.ok) {
+    console.warn(result.reason)
+  }
+}
+
+const handleDrop = async (event, environmentId) => {
   event.preventDefault()
-  
-  if (!dragData.value) {
-    console.warn('❌ No hay datos de drag disponibles')
+
+  if (!ensureInteractive()) {
+    clearDragState()
     return
   }
 
-  const { type, id, releaseId } = dragData.value
-  
-  // Verificar si ya existe un despliegue para este item/release en este ambiente
-  const existingDeployment = deployments.value.find(
-    d => d.itemId === id && d.environmentId === environmentId
-  )
-
-  if (existingDeployment) {
-    console.warn(`⚠️  ${type} ${id} ya está desplegado en ${environmentId}`)
-    resetDragVisuals()
+  const result = await deployArtifact(dragData.value, environmentId)
+  if (!result.ok) {
+    console.warn(result.reason)
+    clearDragState()
     return
   }
 
-  // Eliminar cualquier despliegue existente de este item/release en otros ambientes
-  deployments.value = deployments.value.filter(d => d.itemId !== id)
-
-  // Crear nuevo despliegue
-  const newDeployment = {
-    id: `deploy-${Date.now()}`,
-    itemId: id,
-    type: type,
-    environmentId: environmentId,
-    deployedAt: new Date()
-  }
-
-  // Si es un release, capturar snapshot de items disponibles
-  if (type === 'release') {
-    const release = getReleaseById(id)
-    if (release) {
-      newDeployment.snapshotItemIds = getAvailableItemsForRelease(release).map(item => item.id)
-    }
-  }
-
-  deployments.value.push(newDeployment)
-
-  // Generar evento de despliegue
-  generateDeploymentEvent(type, id, environmentId, releaseId)
-
-  // Limpiar datos del drag
-  dragData.value = null
-  resetDragVisuals()
+  clearDragState()
 }
 
-/**
- * Genera y loguea el evento de despliegue
- */
-const generateDeploymentEvent = (type, itemId, environmentId, releaseId = null) => {
-  const environment = environments.value.find(env => env.id === environmentId)
-  const timestamp = new Date().toISOString()
-  
-  let eventData = {
-    eventType: 'DEPLOYMENT',
-    timestamp,
-    environment: {
-      id: environmentId,
-      name: environment?.name
-    }
-  }
-
-  if (type === 'release') {
-    const release = getReleaseById(itemId)
-    eventData.release = {
-      id: itemId,
-      name: release?.name,
-      itemsCount: release?.items.length
-    }
-    console.log(`📦 EVENTO DE DESPLIEGUE - Release desplegado:`, eventData)
-  } else {
-    const item = getItemById(itemId)
-    eventData.item = {
-      id: itemId,
-      title: item?.title,
-      type: item?.type,
-      priority: item?.priority
-    }
-    if (releaseId) {
-      eventData.sourceRelease = releaseId
-    }
-    console.log(`🔧 EVENTO DE DESPLIEGUE - Item desplegado:`, eventData)
-  }
-
-  // Aquí podrías enviar el evento a un backend o sistema de eventos
-  // Por ahora solo se loguea en consola como solicitado
-}
-
-/**
- * Resetea los efectos visuales del drag
- */
 const resetDragVisuals = () => {
   const draggedElements = document.querySelectorAll('[draggable="true"]')
-  draggedElements.forEach(el => {
-    el.style.opacity = '1'
+  draggedElements.forEach(element => {
+    element.style.opacity = '1'
   })
 }
 
-/**
- * Formatea fecha para mostrar
- */
-const formatDate = (date) => {
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date)
+const clearReleaseHighlights = () => {
+  document.querySelectorAll('.release-header, .deployed-release').forEach(element => {
+    element.classList.remove('drag-over')
+  })
 }
 
-// ==========================================
-// EVENTOS DEL CICLO DE VIDA
-// ==========================================
-
-// Cleanup al finalizar drag
-document.addEventListener('dragend', () => {
-  resetDragVisuals()
-  dragData.value = null
-})
-
-// Efectos visuales para drag over en releases
-document.addEventListener('dragenter', (e) => {
-  if ((e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) && dragData.value?.type === 'item') {
-    e.target.classList.add('drag-over')
+const findReleaseDropTarget = event => {
+  if (!(event.target instanceof Element)) {
+    return null
   }
-})
 
-document.addEventListener('dragleave', (e) => {
-  if (e.target.classList.contains('release-header') || e.target.classList.contains('deployed-release')) {
-    e.target.classList.remove('drag-over')
+  return event.target.closest('.release-header, .deployed-release')
+}
+
+const handleDocumentDragEnd = () => {
+  clearDragState()
+}
+
+const handleDocumentDragEnter = event => {
+  if (dragData.value?.type !== 'item') {
+    return
   }
+
+  const dropTarget = findReleaseDropTarget(event)
+  dropTarget?.classList.add('drag-over')
+}
+
+const handleDocumentDragLeave = event => {
+  const dropTarget = findReleaseDropTarget(event)
+  dropTarget?.classList.remove('drag-over')
+}
+
+const handleDocumentDrop = () => {
+  clearReleaseHighlights()
+}
+
+onMounted(async () => {
+  const result = await initialize()
+  if (!result.ok) {
+    console.warn(result.reason)
+  }
+
+  document.addEventListener('dragend', handleDocumentDragEnd)
+  document.addEventListener('dragenter', handleDocumentDragEnter)
+  document.addEventListener('dragleave', handleDocumentDragLeave)
+  document.addEventListener('drop', handleDocumentDrop)
 })
 
-document.addEventListener('drop', (e) => {
-  // Limpiar efectos visuales en releases
-  document.querySelectorAll('.release-header, .deployed-release').forEach(el => {
-    el.classList.remove('drag-over')
-  })
+onBeforeUnmount(() => {
+  document.removeEventListener('dragend', handleDocumentDragEnd)
+  document.removeEventListener('dragenter', handleDocumentDragEnter)
+  document.removeEventListener('dragleave', handleDocumentDragLeave)
+  document.removeEventListener('drop', handleDocumentDrop)
 })
 </script>
 
@@ -1183,6 +771,64 @@ document.addEventListener('drop', (e) => {
   min-height: calc(100vh - 64px);
   width: 100%;
   box-sizing: border-box;
+}
+
+.dashboard-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: #e0f2fe;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.dashboard-status-bar.has-error {
+  background: #fee2e2;
+}
+
+.status-meta {
+  color: #475569;
+}
+
+.status-error {
+  color: #b91c1c;
+}
+
+.dashboard-state-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-state-title {
+  margin: 0;
+  color: #0f172a;
+}
+
+.dashboard-state-copy {
+  margin: 0;
+  color: #475569;
+}
+
+.state-action-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: #0f172a;
+  color: white;
+  cursor: pointer;
+}
+
+.error-state {
+  border: 1px solid #fecaca;
 }
 
 .dashboard-title {
