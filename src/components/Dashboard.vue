@@ -81,10 +81,21 @@
               >
                 <div class="item-header">
                   <div class="item-info">
-                    <span class="item-type">{{ item.type }}</span>
-                    <span class="item-title">{{ item.title }}</span>
+                    <span class="item-type-badge" :class="`badge-${item.type}`">
+                      <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
+                      {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
+                    </span>
+                  </div>
+                  <div class="item-actions">
+                    <button class="action-btn info-btn" title="Información">
+                      <span>ⓘ</span>
+                    </button>
+                    <button class="action-btn edit-btn" title="Editar">
+                      <span>✎</span>
+                    </button>
                   </div>
                 </div>
+                <p class="item-title">{{ item.title }}</p>
               </div>
             </div>
           </div>
@@ -143,10 +154,21 @@
           >
             <div class="item-header">
               <div class="item-info">
-                <span class="item-type">{{ item.type }}</span>
-                <span class="item-title">{{ item.title }}</span>
+                <span class="item-type-badge" :class="`badge-${item.type}`">
+                  <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
+                  {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
+                </span>
+              </div>
+              <div class="item-actions">
+                <button class="action-btn info-btn" title="Información">
+                  <span>ⓘ</span>
+                </button>
+                <button class="action-btn edit-btn" title="Editar">
+                  <span>✎</span>
+                </button>
               </div>
             </div>
+            <p class="item-title">{{ item.title }}</p>
           </div>
         </div>
       </div>
@@ -250,8 +272,15 @@
                         :key="item.id" 
                         class="deployed-item-detail"
                         :class="`item-${item.type}`">
-                    <span class="item-type" :class="item.type">{{ item.type }}</span>
+                    <span class="item-type-badge" :class="`badge-${item.type}`">
+                      <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
+                      {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
+                    </span>
                     <span class="item-title">{{ item.title }}</span>
+                    <div class="item-actions-small">
+                      <button class="action-btn-small" title="Información">ⓘ</button>
+                      <button class="action-btn-small" title="Editar">✎</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -268,10 +297,17 @@
                 @dragstart="handleDragStart"
               >
                 <div class="deployment-header">
-                  <span class="item-type">{{ getItemById(deployment.itemId)?.type }}</span>
-                  <span class="item-title">{{ getItemById(deployment.itemId)?.title }}</span>
-                  <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
+                  <span class="item-type-badge" :class="`badge-${getItemById(deployment.itemId)?.type}`">
+                    <span class="badge-icon">{{ getItemById(deployment.itemId)?.type === 'feature' ? '★' : getItemById(deployment.itemId)?.type === 'fix' ? '🔧' : '⚠' }}</span>
+                    {{ getItemById(deployment.itemId)?.type?.charAt(0).toUpperCase() + getItemById(deployment.itemId)?.type?.slice(1) }}
+                  </span>
+                  <div class="item-actions">
+                    <button class="action-btn info-btn" title="Información"><span>ⓘ</span></button>
+                    <button class="action-btn edit-btn" title="Editar"><span>✎</span></button>
+                  </div>
                 </div>
+                <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
               </div>
             </div>
           </div>
@@ -1165,16 +1201,16 @@ document.addEventListener('drop', (e) => {
 .dashboard-container {
   display: grid;
   grid-template-columns: 400px 1fr;
-  gap: 30px;
+  gap: 24px;
   height: calc(100vh - 150px);
   width: 100%;
 }
 
 .left-column, .right-column {
   background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .left-column {
@@ -1184,22 +1220,23 @@ document.addEventListener('drop', (e) => {
 .right-column {
   overflow: hidden;
   width: 100%;
+  background: #f8fafc;
 }
 
 .section-title {
-  color: #334155;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 10px;
+  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .section-header .section-title {
@@ -1224,24 +1261,26 @@ document.addEventListener('drop', (e) => {
 }
 
 .release-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: none;
+  border-radius: 16px;
   margin-bottom: 16px;
   overflow: hidden;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .release-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .release-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #1e293b;
+  padding: 20px;
   cursor: grab;
   transition: all 0.2s ease;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .release-header:active {
@@ -1249,39 +1288,44 @@ document.addEventListener('drop', (e) => {
 }
 
 .release-header h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin: 0 0 6px 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .release-description {
-  margin: 0 0 8px 0;
-  opacity: 0.9;
-  font-size: 0.9rem;
+  margin: 0 0 10px 0;
+  opacity: 0.7;
+  font-size: 0.85rem;
+  color: #475569;
 }
 
 .item-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 /* Items dentro de releases */
 .items-container {
-  padding: 12px;
-  background: #f8fafc;
+  padding: 16px;
+  background: white;
+  border-radius: 0 0 16px 16px;
 }
 
 .item-card {
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
   cursor: grab;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .item-card:active {
@@ -1289,39 +1333,126 @@ document.addEventListener('drop', (e) => {
 }
 
 .item-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .item-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .item-info {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   flex: 1;
 }
 
-.item-type {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
+/* Badge de tipo con icono */
+.item-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
   font-weight: 600;
-  width: fit-content;
+  text-transform: capitalize;
+}
+
+.badge-icon {
+  font-size: 0.85rem;
+}
+
+/* Feature Badge - Azul */
+.badge-feature {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.badge-feature .badge-icon {
+  color: #2563eb;
+}
+
+/* Fix Badge - Verde */
+.badge-fix {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.badge-fix .badge-icon {
+  color: #22c55e;
+}
+
+/* Hotfix Badge - Rojo */
+.badge-hotfix {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.badge-hotfix .badge-icon {
+  color: #ef4444;
+}
+
+/* Botones de acciones */
+.item-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.action-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.info-btn:hover {
+  color: #3b82f6;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.edit-btn:hover {
+  color: #8b5cf6;
+  border-color: #c4b5fd;
+  background: #f5f3ff;
 }
 
 .item-title {
   font-weight: 600;
-  color: #334155;
-  font-size: 0.85rem;
-  line-height: 1.2;
+  color: #1e293b;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Ocultar item-type antiguo */
+.item-type {
+  display: none;
 }
 
 .item-description {
@@ -1343,27 +1474,18 @@ document.addEventListener('drop', (e) => {
   font-weight: 500;
 }
 
-/* Colores por tipo de item */
-.item-feature .item-type {
-  background: #10b981;
-  color: white;
-}
-
-.item-fix .item-type {
-  background: #f59e0b;
-  color: white;
-}
-
-.item-hotfix .item-type {
-  background: #ef4444;
-  color: white;
+/* Colores por tipo de item - Sin bordes laterales para estilo minimalista */
+.item-feature,
+.item-fix,
+.item-hotfix {
+  border-left: none;
 }
 
 /* Estilos para release header que acepta drops */
 .release-header.drag-over,
 .deployed-release.drag-over {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  transform: scale(1.02);
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+  transform: scale(1.01);
 }
 
 /* Colores por prioridad */
@@ -1421,36 +1543,35 @@ document.addEventListener('drop', (e) => {
 }
 
 .add-item-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid #10b981;
-  background: white;
-  color: #10b981;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: 1.3rem;
+  font-weight: 500;
 }
 
 .add-item-btn:hover {
-  background: #10b981;
-  color: white;
-  transform: scale(1.1);
+  background: #e2e8f0;
+  color: #334155;
+  transform: scale(1.05);
 }
 
 .add-item-btn.active {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: white;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .add-item-btn.active:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: #fecaca;
+  color: #b91c1c;
 }
 
 .add-icon {
@@ -1465,44 +1586,44 @@ document.addEventListener('drop', (e) => {
 /* Formulario de nuevo item */
 .new-item-form {
   background: #f8fafc;
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
   margin-bottom: 16px;
   animation: slideDown 0.3s ease;
 }
 
 /* Formulario de nuevo ambiente */
 .new-environment-form {
-  background: #f0f9ff;
-  border: 2px dashed #0ea5e9;
-  border-radius: 8px;
-  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
   margin-bottom: 20px;
   animation: slideDown 0.3s ease;
 }
 
 .environment-name-input {
   width: 100%;
-  border: 2px solid #0ea5e9;
-  border-radius: 6px;
-  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
   font-size: 0.9rem;
   margin-bottom: 12px;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   background: white;
   box-sizing: border-box;
 }
 
 .environment-name-input:focus {
   outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
 }
 
 .environment-name-input::placeholder {
   color: #94a3b8;
-  font-style: italic;
+  font-style: normal;
 }
 
 @keyframes slideDown {
@@ -1520,35 +1641,35 @@ document.addEventListener('drop', (e) => {
 
 .item-title-input {
   width: 100%;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
   font-size: 0.9rem;
   margin-bottom: 12px;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   background: white;
   box-sizing: border-box;
 }
 
 .item-title-input:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
 }
 
 .item-title-input.error {
-  border-color: #ef4444;
+  border-color: #fca5a5;
   background: #fef2f2;
 }
 
 .item-title-input.error:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  border-color: #f87171;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.1);
 }
 
 .item-title-input::placeholder {
   color: #94a3b8;
-  font-style: italic;
+  font-style: normal;
 }
 
 .error-message {
@@ -1568,36 +1689,36 @@ document.addEventListener('drop', (e) => {
 }
 
 .item-type-select {
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  border-radius: 10px;
   background: white;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   flex: 1;
 }
 
 .item-type-select:focus {
   outline: none;
-  border-color: #10b981;
+  border-color: #94a3b8;
 }
 
 .form-buttons {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   margin-left: auto;
 }
 
 .save-btn,
 .cancel-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 500;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -1605,28 +1726,29 @@ document.addEventListener('drop', (e) => {
 }
 
 .save-btn {
-  background: #10b981;
-  color: white;
+  background: #dcfce7;
+  color: #16a34a;
 }
 
 .save-btn:hover:not(:disabled) {
-  background: #059669;
+  background: #bbf7d0;
   transform: scale(1.05);
 }
 
 .save-btn:disabled {
-  background: #d1d5db;
+  background: #f1f5f9;
+  color: #cbd5e1;
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .cancel-btn {
-  background: #ef4444;
-  color: white;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .cancel-btn:hover {
-  background: #dc2626;
+  background: #fecaca;
   transform: scale(1.05);
 }
 
@@ -1665,10 +1787,11 @@ document.addEventListener('drop', (e) => {
 }
 
 .environment-column {
-  background: #f1f5f9;
-  border-radius: 8px;
-  padding: 16px;
-  border: 2px dashed #cbd5e1;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.2s ease;
   overflow-y: auto;
   min-height: 100%;
@@ -1678,15 +1801,14 @@ document.addEventListener('drop', (e) => {
 }
 
 .environment-column:hover {
-  border-color: #94a3b8;
-  background: #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .environment-header {
   text-align: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #cbd5e1;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .environment-title {
@@ -1698,9 +1820,9 @@ document.addEventListener('drop', (e) => {
 
 .environment-header h3 {
   margin: 0;
-  color: #334155;
-  font-size: 1rem;
-  font-weight: 600;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 700;
   flex: 1;
   text-align: left;
 }
@@ -1712,12 +1834,12 @@ document.addEventListener('drop', (e) => {
 }
 
 .move-btn {
-  width: 20px;
-  height: 20px;
-  border: 1px solid #cbd5e1;
-  background: white;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #f1f5f9;
   color: #64748b;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.7rem;
   display: flex;
@@ -1727,17 +1849,16 @@ document.addEventListener('drop', (e) => {
 }
 
 .move-btn:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #475569;
-  transform: scale(1.1);
+  background: #e2e8f0;
+  color: #334155;
+  transform: scale(1.05);
 }
 
 .move-btn:disabled {
   background: #f8fafc;
   color: #cbd5e1;
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .deployment-count {
@@ -1756,14 +1877,14 @@ document.addEventListener('drop', (e) => {
 }
 
 .deployed-release, .deployed-item {
-  background: white;
-  border-radius: 6px;
-  padding: 12px;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #3b82f6;
+  box-shadow: none;
   cursor: grab;
   transition: all 0.2s ease;
+  border: none;
 }
 
 .deployed-release:active, .deployed-item:active {
@@ -1771,18 +1892,33 @@ document.addEventListener('drop', (e) => {
 }
 
 .deployed-release:hover, .deployed-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background: #f1f5f9;
 }
 
 .deployed-release {
-  border-left-color: #8b5cf6;
+  border-left: none;
+}
+
+.deployed-item.item-feature,
+.deployed-item.item-fix,
+.deployed-item.item-hotfix {
+  border-left: none;
+}
+
+.deployed-item-title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 12px 0 8px 0;
 }
 
 .deployment-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 8px;
   flex-wrap: wrap;
   gap: 8px;
@@ -1819,43 +1955,49 @@ document.addEventListener('drop', (e) => {
 .deployed-item-detail {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0px;
+  gap: 10px;
+  padding: 12px 14px;
   background: #f8fafc;
-  border-radius: 4px;
+  border-radius: 12px;
+  margin-bottom: 8px;
 }
 
-.deployed-item-detail .item-type {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 2px 6px;
-  border-radius: 4px;
+.deployed-item-detail .item-type-badge {
+  padding: 4px 10px;
   font-size: 0.7rem;
-  font-weight: 600;
-  min-width: 40px;
-  text-align: center;
-}
-
-.deployed-item-detail.item-feature .item-type {
-  background: #10b981;
-  color: white;
-}
-
-.deployed-item-detail.item-fix .item-type {
-  background: #f59e0b;
-  color: white;
-}
-
-.deployed-item-detail.item-hotfix .item-type {
-  background: #ef4444;
-  color: white;
 }
 
 .deployed-item-detail .item-title {
-  font-weight: 500;
-  color: #334155;
+  font-weight: 600;
+  color: #1e293b;
   font-size: 0.85rem;
   flex: 1;
+}
+
+.item-actions-small {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn-small {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.7rem;
+  padding: 0;
+}
+
+.action-btn-small:hover {
+  background: #e2e8f0;
+  color: #475569;
 }
 
 .deployed-item-tag {
@@ -1901,20 +2043,20 @@ document.addEventListener('drop', (e) => {
   top: -30px;
   left: 50%;
   transform: translateX(-50%);
-  background: #1f2937;
+  background: #0f172a;
   color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.7rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
   white-space: nowrap;
   z-index: 1000;
+  font-weight: 500;
 }
 
 /* Estados durante drag */
 .environment-column.drag-over {
-  border-color: #3b82f6;
-  background: #dbeafe;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
 }
 
 /* ==========================================
