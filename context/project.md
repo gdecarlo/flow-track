@@ -81,6 +81,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Estado explícito de carga, guardado y error de persistencia en el dashboard.
 - Tags de alcance técnico por item (`front`, `back`, `app`) con persistencia en Supabase.
 - Tiempo relativo en ambientes (`hace X`) y tiempo por item dentro de releases desplegados.
+- Los items dentro de un release se pueden desenganchar con un icono `🔓`; si estaban dentro de un release desplegado, pasan a desplegarse como item individual en el mismo ambiente.
 
 ## Reglas de comportamiento observadas
 
@@ -111,6 +112,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Columna derecha para ambientes de despliegue con scroll horizontal en pantallas pequeñas.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
+- En items dentro de release, la acción de desenganche usa el SVG `public/lock-unlocked.svg` y queda alineada al extremo derecho del header.
 - Contenedores de release con borde gris claro y radio para delimitar grupos con bajo peso visual.
 
 ## Estado de build verificado

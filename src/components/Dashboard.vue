@@ -106,8 +106,15 @@
                 draggable="true"
                 @dragstart="handleDragStart"
               >
-                <div class="item-top-slot">
+                <div class="item-top-slot item-top-actions">
                   <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
+                  <button
+                    class="item-detach-btn"
+                    title="Desenganchar del release"
+                    @click.stop="handleDetachItem(item.id, release.id)"
+                  >
+                    <img src="/lock-unlocked.svg" alt="Desenganchar item" class="item-detach-icon" />
+                  </button>
                 </div>
                 <p class="item-title">{{ item.title }}</p>
                 <p class="item-description">{{ getItemDescription(item) }}</p>
@@ -282,8 +289,15 @@
                         :key="item.id" 
                         class="deployed-item-detail"
                         :class="`item-${item.type}`">
-                    <div class="item-top-slot">
+                    <div class="item-top-slot item-top-actions">
                       <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
+                      <button
+                        class="item-detach-btn"
+                        title="Desenganchar del release"
+                        @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
+                      >
+                        <img src="/lock-unlocked.svg" alt="Desenganchar item" class="item-detach-icon" />
+                      </button>
                     </div>
                     <span class="item-title">{{ item.title }}</span>
                     <p class="item-description">{{ getItemDescription(item) }}</p>
@@ -374,7 +388,8 @@ const {
   addItemToRelease,
   addItemToActiveRelease,
   deployArtifact,
-  toggleItemArea
+  toggleItemArea,
+  detachItem
 } = useFlowTrackDomain()
 
 const dragData = ref(null)
@@ -790,6 +805,17 @@ const handleToggleItemArea = async (itemId, area) => {
   }
 }
 
+const handleDetachItem = async (itemId, releaseId, environmentId = null) => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await detachItem(itemId, releaseId, environmentId ? { environmentId } : {})
+  if (!result.ok) {
+    console.warn(result.reason)
+  }
+}
+
 const handleDrop = async (event, environmentId) => {
   event.preventDefault()
 
@@ -1137,6 +1163,13 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
 }
 
+.item-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
 .item-hotfix-tag {
   display: inline-flex;
   align-items: center;
@@ -1148,6 +1181,31 @@ onBeforeUnmount(() => {
   text-transform: lowercase;
   color: #ef4444;
   background: #fee2e2;
+}
+
+.item-detach-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: #64748b;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-detach-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.item-detach-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 
 .item-header {

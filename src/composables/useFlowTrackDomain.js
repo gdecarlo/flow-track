@@ -4,6 +4,7 @@ import {
   addItemToDeployedRelease,
   addStandaloneItemToRelease,
   createDeployment,
+  detachItemFromRelease,
   createEnvironment,
   createRelease,
   createStandaloneItem,
@@ -236,6 +237,10 @@ export const useFlowTrackDomain = () => {
     return runPersistedMutation(() => toggleItemAreaSelection(currentState(), itemId, area))
   }
 
+  const detachItem = (itemId, releaseId, options = {}) => {
+    return runPersistedMutation(() => detachItemFromRelease(currentState(), itemId, releaseId, options))
+  }
+
   return {
     initialize,
     isInitializing,
@@ -261,6 +266,7 @@ export const useFlowTrackDomain = () => {
     addItemToRelease,
     addItemToActiveRelease,
     deployArtifact,
-    toggleItemArea
+    toggleItemArea,
+    detachItem
   }
 }

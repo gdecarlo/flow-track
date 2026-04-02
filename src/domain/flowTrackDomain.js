@@ -294,6 +294,63 @@ export const toggleItemAreaSelection = (state, itemId, area) => {
   return { ok: true, item }
 }
 
+export const detachItemFromRelease = (state, itemId, releaseId, options = {}) => {
+  const { releases, standaloneItems, deployments } = state
+  const release = getReleaseById(releases, releaseId)
+
+  if (!release) {
+    return { ok: false, reason: '❌ Release no encontrado' }
+  }
+
+  const itemIndex = release.items.findIndex(item => item.id === itemId)
+  if (itemIndex === -1) {
+    return { ok: false, reason: '❌ Item no pertenece al release' }
+  }
+
+  const [item] = release.items.splice(itemIndex, 1)
+
+  const existsInStandalone = standaloneItems.some(standaloneItem => standaloneItem.id === item.id)
+  if (!existsInStandalone) {
+    standaloneItems.push(item)
+  }
+
+  const releaseDeployment = deployments.find(deployment => {
+    return deployment.type === 'release' && deployment.itemId === releaseId
+  })
+
+  if (releaseDeployment?.snapshotItemIds) {
+    releaseDeployment.snapshotItemIds = releaseDeployment.snapshotItemIds.filter(snapshotItemId => {
+      return snapshotItemId !== itemId
+    })
+  }
+
+  if (releaseDeployment?.itemDeploymentTimes?.[itemId]) {
+    delete releaseDeployment.itemDeploymentTimes[itemId]
+  }
+
+  const targetEnvironmentId = options.environmentId
+  if (!targetEnvironmentId) {
+    return { ok: true, item, release }
+  }
+
+  removeDeploymentByItemId(deployments, itemId)
+
+  deployments.push({
+    id: `deploy-${Date.now()}`,
+    itemId,
+    type: 'item',
+    environmentId: targetEnvironmentId,
+    deployedAt: new Date()
+  })
+
+  return {
+    ok: true,
+    item,
+    release,
+    environmentId: targetEnvironmentId
+  }
+}
+
 export const buildDeploymentEvent = (state, payload) => {
   const { environments } = state
   const { type, id, environmentId, releaseId = null } = payload
