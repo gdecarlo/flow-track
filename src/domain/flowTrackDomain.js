@@ -4,6 +4,8 @@ const deployedTypeOrder = {
   feature: 3
 }
 
+const validAreas = ['front', 'back', 'app']
+
 const removeDeploymentByItemId = (deployments, itemId) => {
   for (let index = deployments.length - 1; index >= 0; index -= 1) {
     if (deployments[index].itemId === itemId) {
@@ -135,7 +137,8 @@ export const createStandaloneItem = ({ title, type }, createdAt = new Date()) =>
     title: title.trim(),
     description: `Item creado el ${formatDate(createdAt)}`,
     type,
-    priority: 'medium'
+    priority: 'medium',
+    areas: []
   }
 }
 
@@ -232,7 +235,37 @@ export const addItemToDeployedRelease = (state, itemId, releaseId) => {
     releaseDeployment.snapshotItemIds.push(itemId)
   }
 
+  if (releaseDeployment) {
+    releaseDeployment.itemDeploymentTimes = {
+      ...(releaseDeployment.itemDeploymentTimes || {}),
+      [itemId]: new Date().toISOString()
+    }
+  }
+
   return { ok: true, item, release }
+}
+
+export const toggleItemAreaSelection = (state, itemId, area) => {
+  if (!validAreas.includes(area)) {
+    return { ok: false, reason: `❌ Área inválida: ${area}` }
+  }
+
+  const item = getItemById(state, itemId)
+  if (!item) {
+    return { ok: false, reason: '❌ Item no encontrado' }
+  }
+
+  const currentAreas = Array.isArray(item.areas)
+    ? item.areas.filter(currentArea => validAreas.includes(currentArea))
+    : []
+
+  if (currentAreas.includes(area)) {
+    item.areas = currentAreas.filter(currentArea => currentArea !== area)
+    return { ok: true, item }
+  }
+
+  item.areas = [...currentAreas, area]
+  return { ok: true, item }
 }
 
 export const buildDeploymentEvent = (state, payload) => {
@@ -313,7 +346,12 @@ export const createDeployment = (state, dragData, environmentId) => {
       return { ok: false, reason: '❌ Release no encontrado' }
     }
 
-    deployment.snapshotItemIds = getAvailableItemsForRelease(release, deployments).map(item => item.id)
+    const snapshotItemIds = getAvailableItemsForRelease(release, deployments).map(item => item.id)
+    deployment.snapshotItemIds = snapshotItemIds
+    deployment.itemDeploymentTimes = snapshotItemIds.reduce((accumulator, itemId) => {
+      accumulator[itemId] = deployment.deployedAt.toISOString()
+      return accumulator
+    }, {})
   }
 
   deployments.push(deployment)

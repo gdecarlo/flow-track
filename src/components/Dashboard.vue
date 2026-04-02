@@ -97,23 +97,24 @@
                 draggable="true"
                 @dragstart="handleDragStart"
               >
-                <div class="item-header">
-                  <div class="item-info">
-                    <span class="item-type-badge" :class="`badge-${item.type}`">
-                      <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
-                      {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
-                    </span>
-                  </div>
-                  <div class="item-actions">
-                    <button class="action-btn info-btn" title="Información">
-                      <span>ⓘ</span>
-                    </button>
-                    <button class="action-btn edit-btn" title="Editar">
-                      <span>✎</span>
+                <div class="item-top-slot">
+                  <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
+                </div>
+                <p class="item-title">{{ item.title }}</p>
+                <p class="item-description">{{ getItemDescription(item) }}</p>
+                <div class="item-footer">
+                  <div class="item-area-group">
+                    <button
+                      v-for="area in itemAreas"
+                      :key="`${item.id}-${area}`"
+                      class="item-area-tag"
+                      :class="{ active: isAreaSelected(item, area) }"
+                      @click.stop="handleToggleItemArea(item.id, area)"
+                    >
+                      {{ area }}
                     </button>
                   </div>
                 </div>
-                <p class="item-title">{{ item.title }}</p>
               </div>
             </div>
           </div>
@@ -172,23 +173,24 @@
             :draggable="!isBusy"
             @dragstart="handleDragStart"
           >
-            <div class="item-header">
-              <div class="item-info">
-                <span class="item-type-badge" :class="`badge-${item.type}`">
-                  <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
-                  {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
-                </span>
-              </div>
-              <div class="item-actions">
-                <button class="action-btn info-btn" title="Información">
-                  <span>ⓘ</span>
-                </button>
-                <button class="action-btn edit-btn" title="Editar">
-                  <span>✎</span>
+            <div class="item-top-slot">
+              <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
+            </div>
+            <p class="item-title">{{ item.title }}</p>
+            <p class="item-description">{{ getItemDescription(item) }}</p>
+            <div class="item-footer">
+              <div class="item-area-group">
+                <button
+                  v-for="area in itemAreas"
+                  :key="`${item.id}-${area}`"
+                  class="item-area-tag"
+                  :class="{ active: isAreaSelected(item, area) }"
+                  @click.stop="handleToggleItemArea(item.id, area)"
+                >
+                  {{ area }}
                 </button>
               </div>
             </div>
-            <p class="item-title">{{ item.title }}</p>
           </div>
         </div>
       </div>
@@ -284,24 +286,31 @@
               >
                 <div class="deployment-header">
                   <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
-                  <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
+                  <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
                 </div>
-                <p class="deployment-description">
-                  {{ getReleaseById(deployment.itemId)?.description }}
-                </p>
                 <div class="deployment-items">
                   <div v-for="item in getDeployedReleaseItems(deployment)" 
                         :key="item.id" 
                         class="deployed-item-detail"
                         :class="`item-${item.type}`">
-                    <span class="item-type-badge" :class="`badge-${item.type}`">
-                      <span class="badge-icon">{{ item.type === 'feature' ? '★' : item.type === 'fix' ? '🔧' : '⚠' }}</span>
-                      {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
-                    </span>
+                    <div class="item-top-slot">
+                      <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
+                    </div>
                     <span class="item-title">{{ item.title }}</span>
-                    <div class="item-actions-small">
-                      <button class="action-btn-small" title="Información">ⓘ</button>
-                      <button class="action-btn-small" title="Editar">✎</button>
+                    <p class="item-description">{{ getItemDescription(item) }}</p>
+                    <div class="item-footer">
+                      <div class="item-area-group">
+                        <button
+                          v-for="area in itemAreas"
+                          :key="`${item.id}-${area}`"
+                          class="item-area-tag"
+                          :class="{ active: isAreaSelected(item, area) }"
+                          @click.stop="handleToggleItemArea(item.id, area)"
+                        >
+                          {{ area }}
+                        </button>
+                      </div>
+                      <span class="item-env-time">{{ formatRelativeTime(getDeploymentItemTime(deployment, item.id)) }}</span>
                     </div>
                   </div>
                 </div>
@@ -318,18 +327,25 @@
                 :draggable="!isBusy"
                 @dragstart="handleDragStart"
               >
-                <div class="deployment-header">
-                  <span class="item-type-badge" :class="`badge-${getItemById(deployment.itemId)?.type}`">
-                    <span class="badge-icon">{{ getItemById(deployment.itemId)?.type === 'feature' ? '★' : getItemById(deployment.itemId)?.type === 'fix' ? '🔧' : '⚠' }}</span>
-                    {{ getItemById(deployment.itemId)?.type?.charAt(0).toUpperCase() + getItemById(deployment.itemId)?.type?.slice(1) }}
-                  </span>
-                  <div class="item-actions">
-                    <button class="action-btn info-btn" title="Información"><span>ⓘ</span></button>
-                    <button class="action-btn edit-btn" title="Editar"><span>✎</span></button>
-                  </div>
+                <div class="item-top-slot">
+                  <span v-if="getItemById(deployment.itemId)?.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
                 </div>
                 <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
-                <span class="deployment-date">{{ formatDate(deployment.deployedAt) }}</span>
+                <p class="item-description">{{ getItemDescription(getItemById(deployment.itemId)) }}</p>
+                <div class="item-footer">
+                  <div class="item-area-group">
+                    <button
+                      v-for="area in itemAreas"
+                      :key="`${deployment.itemId}-${area}`"
+                      class="item-area-tag"
+                      :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
+                      @click.stop="handleToggleItemArea(deployment.itemId, area)"
+                    >
+                      {{ area }}
+                    </button>
+                  </div>
+                  <span class="item-env-time">{{ formatRelativeTime(deployment.deployedAt) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -369,7 +385,8 @@ const {
   moveEnvironmentDown: persistMoveEnvironmentDown,
   addItemToRelease,
   addItemToActiveRelease,
-  deployArtifact
+  deployArtifact,
+  toggleItemArea
 } = useFlowTrackDomain()
 
 const dragData = ref(null)
@@ -405,6 +422,10 @@ const isBusy = computed(() => {
   return isInitializing.value || isSaving.value
 })
 
+const itemAreas = ['front', 'back', 'app']
+const mockDescription = 'Lorem ipsum dolor sit amet, libre unst consectetur adipisicing elit.'
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' })
+
 const lastSavedLabel = computed(() => {
   if (!lastSavedAt.value) {
     return ''
@@ -412,6 +433,63 @@ const lastSavedLabel = computed(() => {
 
   return `Último guardado ${formatDate(lastSavedAt.value)}`
 })
+
+const getItemDescription = item => {
+  const description = item?.description?.trim()
+  return description || mockDescription
+}
+
+const isAreaSelected = (item, area) => {
+  return Array.isArray(item?.areas) && item.areas.includes(area)
+}
+
+const getDeploymentItemTime = (deployment, itemId) => {
+  if (deployment?.itemDeploymentTimes?.[itemId]) {
+    return deployment.itemDeploymentTimes[itemId]
+  }
+
+  return deployment?.deployedAt
+}
+
+const formatRelativeTime = dateValue => {
+  if (!dateValue) {
+    return 'sin fecha'
+  }
+
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue)
+  if (Number.isNaN(date.getTime())) {
+    return 'sin fecha'
+  }
+
+  const elapsedInSeconds = Math.floor((Date.now() - date.getTime()) / 1000)
+
+  if (elapsedInSeconds < 60) {
+    return relativeTimeFormatter.format(-elapsedInSeconds, 'second')
+  }
+
+  const elapsedInMinutes = Math.floor(elapsedInSeconds / 60)
+  if (elapsedInMinutes < 60) {
+    return relativeTimeFormatter.format(-elapsedInMinutes, 'minute')
+  }
+
+  const elapsedInHours = Math.floor(elapsedInMinutes / 60)
+  if (elapsedInHours < 24) {
+    return relativeTimeFormatter.format(-elapsedInHours, 'hour')
+  }
+
+  const elapsedInDays = Math.floor(elapsedInHours / 24)
+  if (elapsedInDays < 30) {
+    return relativeTimeFormatter.format(-elapsedInDays, 'day')
+  }
+
+  const elapsedInMonths = Math.floor(elapsedInDays / 30)
+  if (elapsedInMonths < 12) {
+    return relativeTimeFormatter.format(-elapsedInMonths, 'month')
+  }
+
+  const elapsedInYears = Math.floor(elapsedInDays / 365)
+  return relativeTimeFormatter.format(-elapsedInYears, 'year')
+}
 
 const ensureInteractive = () => {
   if (isInitializing.value) {
@@ -677,6 +755,17 @@ const moveEnvironmentDown = async environmentId => {
   }
 }
 
+const handleToggleItemArea = async (itemId, area) => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  const result = await toggleItemArea(itemId, area)
+  if (!result.ok) {
+    console.warn(result.reason)
+  }
+}
+
 const handleDrop = async (event, environmentId) => {
   event.preventDefault()
 
@@ -907,23 +996,22 @@ onBeforeUnmount(() => {
 }
 
 .release-card {
-  border: none;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
   margin-bottom: 16px;
   overflow: hidden;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .release-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  border-color: #cbd5e1;
 }
 
 .release-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: white;
   color: #1e293b;
-  padding: 20px;
+  padding: 16px;
   cursor: grab;
   transition: all 0.2s ease;
   border-bottom: 1px solid #e2e8f0;
@@ -941,9 +1029,8 @@ onBeforeUnmount(() => {
 }
 
 .release-description {
-  margin: 0 0 10px 0;
-  opacity: 0.7;
-  font-size: 0.85rem;
+  margin: 0 0 8px 0;
+  font-size: 0.82rem;
   color: #475569;
 }
 
@@ -958,20 +1045,20 @@ onBeforeUnmount(() => {
 
 /* Items dentro de releases */
 .items-container {
-  padding: 16px;
-  background: white;
+  padding: 12px;
+  background: #f8fafc;
   border-radius: 0 0 16px 16px;
 }
 
 .item-card {
-  background: white;
+  background: #f8fafc;
   border: none;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 14px 14px 12px;
   margin-bottom: 12px;
   cursor: grab;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
 }
 
 .item-card:active {
@@ -979,8 +1066,26 @@ onBeforeUnmount(() => {
 }
 
 .item-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
   transform: translateY(-2px);
+}
+
+.item-top-slot {
+  min-height: 24px;
+  margin-bottom: 8px;
+}
+
+.item-hotfix-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: lowercase;
+  color: #ef4444;
+  background: #fee2e2;
 }
 
 .item-header {
@@ -1091,9 +1196,10 @@ onBeforeUnmount(() => {
 .item-title {
   font-weight: 600;
   color: #1e293b;
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.4;
-  margin: 0;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
 }
 
 /* Ocultar item-type antiguo */
@@ -1103,9 +1209,51 @@ onBeforeUnmount(() => {
 
 .item-description {
   color: #64748b;
-  font-size: 0.85rem;
-  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  margin: 0 0 10px;
   line-height: 1.4;
+}
+
+.item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.item-area-group {
+  display: flex;
+  gap: 6px;
+}
+
+.item-area-tag {
+  border: none;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  text-transform: lowercase;
+  opacity: 0.55;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.item-area-tag:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.item-area-tag.active {
+  opacity: 1;
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.item-env-time {
+  font-size: 0.78rem;
+  color: #475569;
+  white-space: nowrap;
 }
 
 .item-meta {
@@ -1525,7 +1673,7 @@ onBeforeUnmount(() => {
 .deployed-release, .deployed-item {
   background: #f8fafc;
   border-radius: 14px;
-  padding: 16px;
+  padding: 14px;
   margin-bottom: 12px;
   box-shadow: none;
   cursor: grab;
@@ -1539,12 +1687,15 @@ onBeforeUnmount(() => {
 
 .deployed-release:hover, .deployed-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  background: #f1f5f9;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
 
 .deployed-release {
-  border-left: none;
+  background: transparent;
+  padding: 8px 0 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-top: 1px dashed #d1d5db;
 }
 
 .deployed-item.item-feature,
@@ -1565,7 +1716,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -1573,16 +1724,13 @@ onBeforeUnmount(() => {
 .deployment-header h4 {
   margin: 0;
   color: #334155;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 600;
 }
 
 .deployment-date {
   color: #64748b;
-  font-size: 0.7rem;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 0.72rem;
 }
 
 .deployment-description {
@@ -1595,17 +1743,16 @@ onBeforeUnmount(() => {
 .deployment-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .deployed-item-detail {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  display: block;
+  padding: 14px;
   background: #f8fafc;
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: 18px;
+  margin-bottom: 0;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
 }
 
 .deployed-item-detail .item-type-badge {
@@ -1616,8 +1763,7 @@ onBeforeUnmount(() => {
 .deployed-item-detail .item-title {
   font-weight: 600;
   color: #1e293b;
-  font-size: 0.85rem;
-  flex: 1;
+  font-size: 1rem;
 }
 
 .item-actions-small {

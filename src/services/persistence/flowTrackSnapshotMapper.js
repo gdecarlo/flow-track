@@ -5,12 +5,45 @@ export const createEmptyFlowTrackState = () => ({
   deployments: []
 })
 
+const validAreas = ['front', 'back', 'app']
+
+const normalizeAreas = areas => {
+  if (!Array.isArray(areas)) {
+    return []
+  }
+
+  return [...new Set(areas.filter(area => validAreas.includes(area)))]
+}
+
+const normalizeItemDeploymentTimes = value => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+
+  const entries = Object.entries(value)
+    .filter(([itemId]) => itemId)
+    .map(([itemId, deployedAt]) => {
+      const timestamp = deployedAt instanceof Date
+        ? deployedAt.toISOString()
+        : new Date(deployedAt ?? Date.now()).toISOString()
+
+      return [itemId, timestamp]
+    })
+
+  if (entries.length === 0) {
+    return undefined
+  }
+
+  return Object.fromEntries(entries)
+}
+
 const normalizeItem = item => ({
   id: item?.id ?? '',
   title: item?.title ?? '',
   description: item?.description ?? '',
   type: item?.type ?? 'feature',
-  priority: item?.priority ?? 'medium'
+  priority: item?.priority ?? 'medium',
+  areas: normalizeAreas(item?.areas)
 })
 
 const normalizeRelease = release => ({
@@ -35,7 +68,8 @@ const normalizeDeployment = deployment => ({
   deployedAt: deployment?.deployedAt instanceof Date
     ? deployment.deployedAt
     : new Date(deployment?.deployedAt ?? Date.now()),
-  snapshotItemIds: Array.isArray(deployment?.snapshotItemIds) ? deployment.snapshotItemIds : undefined
+  snapshotItemIds: Array.isArray(deployment?.snapshotItemIds) ? deployment.snapshotItemIds : undefined,
+  itemDeploymentTimes: normalizeItemDeploymentTimes(deployment?.itemDeploymentTimes)
 })
 
 export const deserializeFlowTrackState = state => {
@@ -70,7 +104,10 @@ export const serializeFlowTrackState = state => {
     deployments: hydratedState.deployments.map(deployment => ({
       ...deployment,
       deployedAt: deployment.deployedAt.toISOString(),
-      snapshotItemIds: deployment.snapshotItemIds ? [...deployment.snapshotItemIds] : undefined
+      snapshotItemIds: deployment.snapshotItemIds ? [...deployment.snapshotItemIds] : undefined,
+      itemDeploymentTimes: deployment.itemDeploymentTimes
+        ? { ...deployment.itemDeploymentTimes }
+        : undefined
     }))
   }
 }

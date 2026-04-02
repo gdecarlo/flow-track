@@ -129,3 +129,14 @@ Si se quiere evolucionar el proyecto, lo más natural sería trabajar en este or
 - Implementar acciones reales para editar y ver detalle de items/releases.
 - Normalizar estilos globales y metadatos base.
 - Agregar pruebas sobre reglas de despliegue y movimiento.
+
+## Actualización 2026-04-02
+
+- Se rediseñaron las tarjetas de items para alinearlas con la referencia visual:
+	- Slot superior reservado para tag `hotfix` (solo visible cuando corresponde).
+	- Título con wrap natural y descripción visible con placeholder.
+	- Footer con chips `front`, `back`, `app` seleccionables por item.
+- Se agregó persistencia de áreas seleccionadas por item (`areas`) en el snapshot.
+- En ambientes, el footer de cada item ahora muestra tiempo relativo (`hace X`) desde su presencia en el entorno.
+- Los releases desplegados ahora guardan timestamps por item (`itemDeploymentTimes`) para diferenciar casos donde el release está desde antes pero un feature se agregó después.
+- El contenedor visual del release desplegado se volvió minimalista para priorizar la separación entre features sin perder agrupación.

@@ -17,7 +17,8 @@ import {
   getReleaseById,
   hasDuplicateEnvironmentName,
   hasDuplicateReleaseName,
-  moveEnvironmentOrder
+  moveEnvironmentOrder,
+  toggleItemAreaSelection
 } from '../domain/flowTrackDomain'
 import { createFlowTrackSnapshotRepository } from '../services/persistence/flowTrackSnapshotRepository'
 import {
@@ -237,6 +238,10 @@ export const useFlowTrackDomain = () => {
     })
   }
 
+  const toggleItemArea = (itemId, area) => {
+    return runPersistedMutation(() => toggleItemAreaSelection(currentState(), itemId, area))
+  }
+
   return {
     initialize,
     isInitializing,
@@ -262,6 +267,7 @@ export const useFlowTrackDomain = () => {
     moveEnvironmentDown,
     addItemToRelease,
     addItemToActiveRelease,
-    deployArtifact
+    deployArtifact,
+    toggleItemArea
   }
 }
