@@ -20,7 +20,16 @@
     <div v-else class="dashboard-container">
       <!-- Columna Izquierda: Lista de Artefactos -->
       <div class="left-column">
-        <h2 class="section-title">Artefactos</h2>
+        <div class="left-column-header">
+          <h2 class="section-title">Artefactos</h2>
+          <button
+            class="new-environment-link"
+            @click="toggleNewEnvironmentForm"
+            :disabled="isBusy"
+          >
+            nuevo ambiente
+          </button>
+        </div>
         
         <!-- Releases con Items -->
         <div class="releases-container">
@@ -197,18 +206,6 @@
 
       <!-- Columna Derecha: Tablero Kanban de Ambientes -->
       <div class="right-column">
-        <div class="section-header environments-header">
-          <button 
-            class="add-item-btn"
-            @click="toggleNewEnvironmentForm"
-            :disabled="isBusy"
-            :class="{ 'active': showNewEnvironmentForm }"
-            title="Agregar ambiente"
-          >
-            <span class="add-icon">{{ showNewEnvironmentForm ? '×' : '+' }}</span>
-          </button>
-        </div>
-
         <!-- Formulario para nuevo ambiente -->
         <div v-if="showNewEnvironmentForm" class="new-environment-form">
           <input
@@ -998,16 +995,43 @@ onBeforeUnmount(() => {
   padding-bottom: 0;
 }
 
+.left-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.left-column-header .section-title {
+  margin-bottom: 0;
+}
+
+.new-environment-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.new-environment-link:hover:not(:disabled) {
+  color: #0f172a;
+}
+
+.new-environment-link:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-}
-
-.environments-header {
-  justify-content: flex-end;
-  margin-bottom: 16px;
 }
 
 .section-header .section-title {
@@ -1667,9 +1691,10 @@ onBeforeUnmount(() => {
 
 .environment-header h3 {
   margin: 0;
-  color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
   flex: 1;
   text-align: left;
 }
