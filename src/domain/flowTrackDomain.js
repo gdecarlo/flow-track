@@ -184,6 +184,32 @@ export const moveEnvironmentOrder = (environments, environmentId, direction) => 
   return currentEnvironment
 }
 
+export const reorderEnvironmentOrder = (environments, sourceEnvironmentId, targetEnvironmentId) => {
+  if (sourceEnvironmentId === targetEnvironmentId) {
+    return null
+  }
+
+  const sortedEnvironments = [...environments].sort((firstEnvironment, secondEnvironment) => {
+    return (firstEnvironment.order || 999) - (secondEnvironment.order || 999)
+  })
+
+  const sourceIndex = sortedEnvironments.findIndex(environment => environment.id === sourceEnvironmentId)
+  const targetIndex = sortedEnvironments.findIndex(environment => environment.id === targetEnvironmentId)
+
+  if (sourceIndex === -1 || targetIndex === -1) {
+    return null
+  }
+
+  const [sourceEnvironment] = sortedEnvironments.splice(sourceIndex, 1)
+  sortedEnvironments.splice(targetIndex, 0, sourceEnvironment)
+
+  sortedEnvironments.forEach((environment, index) => {
+    environment.order = index + 1
+  })
+
+  return sourceEnvironment
+}
+
 export const addStandaloneItemToRelease = (state, itemId, releaseId) => {
   const { standaloneItems, releases } = state
   const item = getItemById(state, itemId)

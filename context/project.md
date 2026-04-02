@@ -140,3 +140,4 @@ Si se quiere evolucionar el proyecto, lo más natural sería trabajar en este or
 - En ambientes, el footer de cada item ahora muestra tiempo relativo (`hace X`) desde su presencia en el entorno.
 - Los releases desplegados ahora guardan timestamps por item (`itemDeploymentTimes`) para diferenciar casos donde el release está desde antes pero un feature se agregó después.
 - El contenedor visual del release desplegado se volvió minimalista para priorizar la separación entre features sin perder agrupación.
+- El orden de ambientes pasó de flechas izquierda/derecha a drag and drop exclusivo desde la cabecera de cada ambiente.

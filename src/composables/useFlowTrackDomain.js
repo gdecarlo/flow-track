@@ -17,7 +17,7 @@ import {
   getReleaseById,
   hasDuplicateEnvironmentName,
   hasDuplicateReleaseName,
-  moveEnvironmentOrder,
+  reorderEnvironmentOrder,
   toggleItemAreaSelection
 } from '../domain/flowTrackDomain'
 import { createFlowTrackSnapshotRepository } from '../services/persistence/flowTrackSnapshotRepository'
@@ -196,22 +196,16 @@ export const useFlowTrackDomain = () => {
     })
   }
 
-  const moveEnvironmentUp = environmentId => {
+  const reorderEnvironment = (sourceEnvironmentId, targetEnvironmentId) => {
     return runPersistedMutation(() => {
-      const environment = moveEnvironmentOrder(environments.value, environmentId, 'left')
-      if (environment) {
-        console.log(`◄ Ambiente ${environment.name} movido hacia la izquierda`)
-      }
+      const environment = reorderEnvironmentOrder(
+        environments.value,
+        sourceEnvironmentId,
+        targetEnvironmentId
+      )
 
-      return { ok: true, environment }
-    })
-  }
-
-  const moveEnvironmentDown = environmentId => {
-    return runPersistedMutation(() => {
-      const environment = moveEnvironmentOrder(environments.value, environmentId, 'right')
       if (environment) {
-        console.log(`► Ambiente ${environment.name} movido hacia la derecha`)
+        console.log(`↕ Ambiente ${environment.name} reordenado por drag and drop`)
       }
 
       return { ok: true, environment }
@@ -263,8 +257,7 @@ export const useFlowTrackDomain = () => {
     createNewItem,
     createNewRelease,
     createNewEnvironment,
-    moveEnvironmentUp,
-    moveEnvironmentDown,
+    reorderEnvironment,
     addItemToRelease,
     addItemToActiveRelease,
     deployArtifact,

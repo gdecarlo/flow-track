@@ -246,27 +246,20 @@
             @dragenter.prevent
             @drop="handleDrop($event, environment.id)"
           >
-            <div class="environment-header">
+            <div
+              class="environment-header"
+              :class="{
+                'is-drag-source': draggedEnvironmentId === environment.id,
+                'is-drag-over': dragOverEnvironmentId === environment.id
+              }"
+              :draggable="!isBusy"
+              @dragstart="handleEnvironmentDragStart($event, environment.id)"
+              @dragover.prevent="handleEnvironmentDragOver($event, environment.id)"
+              @drop="handleEnvironmentDrop($event, environment.id)"
+              @dragend="handleEnvironmentDragEnd"
+            >
               <div class="environment-title">
                 <h3>{{ environment.name }}</h3>
-                <div class="environment-controls">
-                  <button 
-                    @click="moveEnvironmentUp(environment.id)"
-                    class="move-btn"
-                    :disabled="isBusy || sortedEnvironments.findIndex(env => env.id === environment.id) <= 0"
-                    title="Mover hacia la izquierda"
-                  >
-                    ◄
-                  </button>
-                  <button 
-                    @click="moveEnvironmentDown(environment.id)"
-                    class="move-btn"
-                    :disabled="isBusy || sortedEnvironments.findIndex(env => env.id === environment.id) >= sortedEnvironments.length - 1"
-                    title="Mover hacia la derecha"
-                  >
-                    ►
-                  </button>
-                </div>
               </div>
             </div>
             
@@ -381,8 +374,7 @@ const {
   createNewItem: createDomainItem,
   createNewRelease: createDomainRelease,
   createNewEnvironment: createDomainEnvironment,
-  moveEnvironmentUp: persistMoveEnvironmentUp,
-  moveEnvironmentDown: persistMoveEnvironmentDown,
+  reorderEnvironment,
   addItemToRelease,
   addItemToActiveRelease,
   deployArtifact,
@@ -409,6 +401,8 @@ const newEnvironment = ref({
   name: ''
 })
 const environmentNameInput = ref(null)
+const draggedEnvironmentId = ref('')
+const dragOverEnvironmentId = ref('')
 
 const isDuplicateRelease = computed(() => {
   return hasDuplicateReleaseName(newRelease.value.name)
@@ -733,26 +727,60 @@ const handleDragStart = event => {
   console.log(`🚀 Iniciando drag: ${type} ${id}`, dragData.value)
 }
 
-const moveEnvironmentUp = async environmentId => {
+const handleEnvironmentDragStart = (event, environmentId) => {
   if (!ensureInteractive()) {
+    event.preventDefault()
     return
   }
 
-  const result = await persistMoveEnvironmentUp(environmentId)
-  if (!result.ok) {
-    console.warn(result.reason)
+  draggedEnvironmentId.value = environmentId
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', environmentId)
   }
 }
 
-const moveEnvironmentDown = async environmentId => {
-  if (!ensureInteractive()) {
+const handleEnvironmentDragOver = (event, environmentId) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (!draggedEnvironmentId.value || draggedEnvironmentId.value === environmentId) {
     return
   }
 
-  const result = await persistMoveEnvironmentDown(environmentId)
+  dragOverEnvironmentId.value = environmentId
+}
+
+const handleEnvironmentDrop = async (event, environmentId) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (!ensureInteractive()) {
+    draggedEnvironmentId.value = ''
+    dragOverEnvironmentId.value = ''
+    return
+  }
+
+  const sourceEnvironmentId = draggedEnvironmentId.value
+  if (!sourceEnvironmentId || sourceEnvironmentId === environmentId) {
+    draggedEnvironmentId.value = ''
+    dragOverEnvironmentId.value = ''
+    return
+  }
+
+  const result = await reorderEnvironment(sourceEnvironmentId, environmentId)
   if (!result.ok) {
     console.warn(result.reason)
   }
+
+  draggedEnvironmentId.value = ''
+  dragOverEnvironmentId.value = ''
+}
+
+const handleEnvironmentDragEnd = () => {
+  draggedEnvironmentId.value = ''
+  dragOverEnvironmentId.value = ''
 }
 
 const handleToggleItemArea = async (itemId, area) => {
@@ -768,6 +796,10 @@ const handleToggleItemArea = async (itemId, area) => {
 
 const handleDrop = async (event, environmentId) => {
   event.preventDefault()
+
+  if (draggedEnvironmentId.value) {
+    return
+  }
 
   if (!ensureInteractive()) {
     clearDragState()
@@ -1603,13 +1635,28 @@ onBeforeUnmount(() => {
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid #f1f5f9;
+  cursor: grab;
+  border-radius: 10px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.environment-header:active {
+  cursor: grabbing;
+}
+
+.environment-header.is-drag-source {
+  opacity: 0.65;
+}
+
+.environment-header.is-drag-over {
+  background: #eff6ff;
+  border-bottom-color: #93c5fd;
 }
 
 .environment-title {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  gap: 8px;
 }
 
 .environment-header h3 {
@@ -1619,40 +1666,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
   flex: 1;
   text-align: left;
-}
-
-.environment-controls {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-}
-
-.move-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: #f1f5f9;
-  color: #64748b;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.7rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.move-btn:hover:not(:disabled) {
-  background: #e2e8f0;
-  color: #334155;
-  transform: scale(1.05);
-}
-
-.move-btn:disabled {
-  background: #f8fafc;
-  color: #cbd5e1;
-  cursor: not-allowed;
-  opacity: 0.4;
 }
 
 .deployment-count {
