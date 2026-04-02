@@ -111,6 +111,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 
 - Diseño claro y orientado a dashboard.
 - Navbar superior simple con el nombre Flow Track.
+- El texto `Último guardado ...` se muestra inline junto al título `Flow Track` en la navbar.
+- El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
 - Columna izquierda para artefactos y formularios de alta, con trigger de ambiente como link `nuevo ambiente`.
 - Columna derecha para ambientes de despliegue con scroll horizontal en pantallas pequeñas.
 - Badges visuales por tipo de item: feature, fix y hotfix.
@@ -121,6 +123,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Durante drag sobre releases, el estado de drop target realza solo el borde (sin fondo verde), con trazo más oscuro y más grueso, aplicado sobre toda la superficie del release.
 - El flujo de drag/drop entre releases protege contra estado de drag nulo (`dragData`) para evitar errores de consola al mover items entre releases.
 - El drag/drop usa payload serializado en `dataTransfer` como respaldo del estado reactivo para evitar pérdidas intermitentes de contexto al soltar sobre releases o ambientes.
+- Se eliminó la barra/toast superior del dashboard que mostraba estado de guardado.
 
 ## Estado de build verificado
 

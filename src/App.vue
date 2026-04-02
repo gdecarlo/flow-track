@@ -1,5 +1,21 @@
 <script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
 import Dashboard from './components/Dashboard.vue';
+
+const lastSavedLabel = ref('')
+
+const handleLastSavedLabel = event => {
+  lastSavedLabel.value = event.detail || ''
+}
+
+onMounted(() => {
+  window.addEventListener('flowtrack:last-saved-label', handleLastSavedLabel)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('flowtrack:last-saved-label', handleLastSavedLabel)
+})
 
 </script>
 
@@ -8,7 +24,10 @@ import Dashboard from './components/Dashboard.vue';
     <!-- Navbar minimalista -->
     <nav class="navbar">
       <div class="navbar-container">
-        <h1 class="app-title">Flow Track</h1>
+        <div class="brand-group">
+          <h1 class="app-title">Flow Track</h1>
+          <span v-if="lastSavedLabel" class="last-saved-inline">{{ lastSavedLabel }}</span>
+        </div>
         
       </div>
     </nav>
@@ -47,9 +66,15 @@ import Dashboard from './components/Dashboard.vue';
   width: 100%;
   padding: 0 24px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   height: 64px;
+}
+
+.brand-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .app-title {
@@ -62,6 +87,13 @@ import Dashboard from './components/Dashboard.vue';
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: none;
+}
+
+.last-saved-inline {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .navbar-actions {
@@ -108,6 +140,14 @@ import Dashboard from './components/Dashboard.vue';
   
   .app-title {
     font-size: 1.5rem;
+  }
+
+  .brand-group {
+    gap: 8px;
+  }
+
+  .last-saved-inline {
+    font-size: 0.75rem;
   }
   
   .status-text {

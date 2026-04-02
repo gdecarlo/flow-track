@@ -1,10 +1,5 @@
 <template>
   <div class="deployment-dashboard">
-    <div v-if="isReady" class="dashboard-status-bar" :class="{ 'has-error': persistenceError }">
-      <span>{{ isSaving ? 'Guardando cambios en Supabase...' : 'Supabase conectado' }}</span>
-      <span v-if="lastSavedLabel" class="status-meta">{{ lastSavedLabel }}</span>
-      <span v-if="persistenceError" class="status-error">{{ persistenceError }}</span>
-    </div>
 
     <div v-if="isInitializing" class="dashboard-state-panel">
       <h2 class="dashboard-state-title">Cargando tablero</h2>
@@ -358,7 +353,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useFlowTrackDomain } from '../composables/useFlowTrackDomain'
 
@@ -438,6 +433,10 @@ const lastSavedLabel = computed(() => {
 
   return `Último guardado ${formatDate(lastSavedAt.value)}`
 })
+
+watch(lastSavedLabel, label => {
+  window.dispatchEvent(new CustomEvent('flowtrack:last-saved-label', { detail: label }))
+}, { immediate: true })
 
 const getItemDescription = item => {
   const description = item?.description?.trim()
