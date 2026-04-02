@@ -56,10 +56,10 @@ La interfaz modela un flujo simple de despliegue:
 
 La aplicación maneja cuatro conceptos principales persistidos como un único snapshot:
 
-- `Item`: unidad individual de trabajo con `id`, `title`, `description`, `type` y `priority`.
+- `Item`: unidad individual de trabajo con `id`, `title`, `description`, `type`, `priority` y `areas` (`front`, `back`, `app`).
 - `Release`: agrupación de items con `id`, `name`, `description` e `items`.
 - `Environment`: ambiente de despliegue con `id`, `name`, `description` y `order`.
-- `Deployment`: relación entre un item o release y un ambiente, con fecha de despliegue y snapshot de items en releases.
+- `Deployment`: relación entre un item o release y un ambiente, con fecha de despliegue, snapshot de items y timestamps por item en releases desplegados (`itemDeploymentTimes`).
 
 ## Funcionalidades implementadas
 
@@ -71,7 +71,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Creación de items independientes desde formulario inline.
 - Creación de releases vacíos desde formulario inline.
 - Creación de nuevos ambientes desde formulario inline.
-- Reordenamiento de ambientes con controles izquierda/derecha.
+- Reordenamiento de ambientes por drag and drop desde la cabecera de cada ambiente.
 - Drag and drop de items y releases hacia ambientes.
 - Drag and drop de items standalone hacia releases.
 - Drag and drop de items ya desplegados hacia releases desplegados.
@@ -79,6 +79,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Validación básica para evitar nombres duplicados de releases y ambientes.
 - Rollback local si falla un guardado en Supabase.
 - Estado explícito de carga, guardado y error de persistencia en el dashboard.
+- Tags de alcance técnico por item (`front`, `back`, `app`) con persistencia en Supabase.
+- Tiempo relativo en ambientes (`hace X`) y tiempo por item dentro de releases desplegados.
 
 ## Reglas de comportamiento observadas
 
@@ -105,9 +107,11 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 
 - Diseño claro y orientado a dashboard.
 - Navbar superior simple con el nombre Flow Track.
-- Columna izquierda para artefactos y formularios de alta.
+- Columna izquierda para artefactos y formularios de alta, con trigger de ambiente como link `nuevo ambiente`.
 - Columna derecha para ambientes de despliegue con scroll horizontal en pantallas pequeñas.
 - Badges visuales por tipo de item: feature, fix y hotfix.
+- Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
+- Contenedores de release con borde gris claro y radio para delimitar grupos con bajo peso visual.
 
 ## Estado de build verificado
 
@@ -130,14 +134,3 @@ Si se quiere evolucionar el proyecto, lo más natural sería trabajar en este or
 - Normalizar estilos globales y metadatos base.
 - Agregar pruebas sobre reglas de despliegue y movimiento.
 
-## Actualización 2026-04-02
-
-- Se rediseñaron las tarjetas de items para alinearlas con la referencia visual:
-	- Slot superior reservado para tag `hotfix` (solo visible cuando corresponde).
-	- Título con wrap natural y descripción visible con placeholder.
-	- Footer con chips `front`, `back`, `app` seleccionables por item.
-- Se agregó persistencia de áreas seleccionadas por item (`areas`) en el snapshot.
-- En ambientes, el footer de cada item ahora muestra tiempo relativo (`hace X`) desde su presencia en el entorno.
-- Los releases desplegados ahora guardan timestamps por item (`itemDeploymentTimes`) para diferenciar casos donde el release está desde antes pero un feature se agregó después.
-- El contenedor visual del release desplegado se volvió minimalista para priorizar la separación entre features sin perder agrupación.
-- El orden de ambientes pasó de flechas izquierda/derecha a drag and drop exclusivo desde la cabecera de cada ambiente.

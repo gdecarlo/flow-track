@@ -238,10 +238,10 @@ async function handlePostToolUse(payload) {
 
   process.stdout.write(JSON.stringify({
     continue: true,
-    systemMessage: 'Se modificó código. Antes de cerrar la sesión, actualiza context/project.md con el impacto de los cambios.',
+    systemMessage: 'Se modificó código. Antes de cerrar la sesión, actualiza context/project.md como estado actual del sistema (sin historial, sin secciones de "actualización" por fecha).',
     hookSpecificOutput: {
       hookEventName: 'PostToolUse',
-      additionalContext: `Sigue pendiente actualizar context/project.md. Archivos detectados: ${state.pendingFiles.join(', ')}`
+      additionalContext: `Sigue pendiente actualizar context/project.md como snapshot vigente del producto. Archivos detectados: ${state.pendingFiles.join(', ')}`
     }
   }))
 }
@@ -263,7 +263,7 @@ async function handleStop(payload) {
   if (payload.stop_hook_active) {
     process.stdout.write(JSON.stringify({
       continue: true,
-      systemMessage: 'Sigue pendiente actualizar context/project.md antes de considerar cerrada la sesión.'
+      systemMessage: 'Sigue pendiente actualizar context/project.md en formato de estado actual (no bitácora) antes de considerar cerrada la sesión.'
     }))
     return
   }
@@ -276,7 +276,7 @@ async function handleStop(payload) {
     hookSpecificOutput: {
       hookEventName: 'Stop',
       decision: 'block',
-      reason: `Actualiza context/project.md antes de terminar la sesión.${pendingSummary}`
+      reason: `Actualiza context/project.md antes de terminar la sesión como estado actual del sistema (sin historial).${pendingSummary}`
     }
   }))
 }
