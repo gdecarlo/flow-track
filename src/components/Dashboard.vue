@@ -76,7 +76,10 @@
           <div 
             v-for="release in availableReleases" 
             :key="release.id" 
-            class="release-card"
+            class="release-card available-release"
+            :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
+            @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
+            @drop="handleDropOnRelease($event, release.id)"
           >
             <div 
               class="release-header draggable-item"
@@ -84,13 +87,9 @@
               :data-id="release.id"
               :draggable="!isBusy"
               @dragstart="handleDragStart"
-              @dragover.prevent
-              @dragenter.prevent
-              @drop="handleDropOnRelease($event, release.id)"
             >
               <h3>{{ release.name }}</h3>
               <p class="release-description">{{ release.description }}</p>
-              <span class="item-count">{{ getAvailableItemsForRelease(release).length }} items disponibles</span>
             </div>
             
             <!-- Items dentro del Release que están disponibles -->
@@ -272,12 +271,12 @@
                 v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'release')"
                 :key="`release-${deployment.itemId}`"
                 class="deployed-release draggable-item"
+                :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
                 :data-type="'release'"
                 :data-id="deployment.itemId"
                 :draggable="!isBusy"
                 @dragstart="handleDragStart"
-                @dragover.prevent
-                @dragenter.prevent
+                @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
                 @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
               >
                 <div class="deployment-header">
@@ -414,6 +413,7 @@ const newEnvironment = ref({
 const environmentNameInput = ref(null)
 const draggedEnvironmentId = ref('')
 const dragOverEnvironmentId = ref('')
+const activeReleaseDropZone = ref({ type: '', id: '' })
 
 const isDuplicateRelease = computed(() => {
   return hasDuplicateReleaseName(newRelease.value.name)
@@ -653,7 +653,43 @@ const cancelNewEnvironment = () => {
 
 const clearDragState = () => {
   resetDragVisuals()
+  activeReleaseDropZone.value = { type: '', id: '' }
   dragData.value = null
+}
+
+const resolveDropPayload = event => {
+  if (dragData.value) {
+    return { ...dragData.value }
+  }
+
+  const serializedPayload = event.dataTransfer?.getData('application/json')
+  if (!serializedPayload) {
+    return null
+  }
+
+  try {
+    const parsedPayload = JSON.parse(serializedPayload)
+    if (!parsedPayload?.type || !parsedPayload?.id) {
+      return null
+    }
+
+    return parsedPayload
+  } catch {
+    return null
+  }
+}
+
+const handleReleaseDragOver = (event, dropZoneType, dropZoneId) => {
+  event.preventDefault()
+
+  if (dragData.value?.type !== 'item') {
+    return
+  }
+
+  activeReleaseDropZone.value = {
+    type: dropZoneType,
+    id: dropZoneId
+  }
 }
 
 const handleDropOnDeployedRelease = async (event, releaseId) => {
@@ -665,25 +701,28 @@ const handleDropOnDeployedRelease = async (event, releaseId) => {
     return
   }
 
-  if (!dragData.value) {
+  const dropPayload = resolveDropPayload(event)
+  if (!dropPayload) {
     console.warn('❌ No hay datos de drag disponibles')
     return
   }
 
-  if (dragData.value.type !== 'item') {
+  if (dropPayload.type !== 'item') {
     console.warn('❌ Solo se pueden agregar items a releases')
     clearDragState()
     return
   }
 
-  const result = await addItemToActiveRelease(dragData.value.id, releaseId)
+  const draggedItemId = dropPayload.id
+
+  const result = await addItemToActiveRelease(draggedItemId, releaseId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
     return
   }
 
-  console.log(`✅ Item ${dragData.value.id} agregado al release desplegado ${releaseId}`)
+  console.log(`✅ Item ${draggedItemId} agregado al release desplegado ${releaseId}`)
   clearDragState()
 }
 
@@ -696,25 +735,28 @@ const handleDropOnRelease = async (event, releaseId) => {
     return
   }
 
-  if (!dragData.value) {
+  const dropPayload = resolveDropPayload(event)
+  if (!dropPayload) {
     console.warn('❌ No hay datos de drag disponibles')
     return
   }
 
-  if (dragData.value.type !== 'item') {
+  if (dropPayload.type !== 'item') {
     console.warn('❌ Solo se pueden agregar items a releases')
     clearDragState()
     return
   }
 
-  const result = await addItemToRelease(dragData.value.id, releaseId)
+  const draggedItemId = dropPayload.id
+
+  const result = await addItemToRelease(draggedItemId, releaseId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
     return
   }
 
-  console.log(`✅ Item ${dragData.value.id} agregado al release ${releaseId}`)
+  console.log(`✅ Item ${draggedItemId} agregado al release ${releaseId}`)
   clearDragState()
 }
 
@@ -732,6 +774,11 @@ const handleDragStart = event => {
     type,
     id,
     releaseId
+  }
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('application/json', JSON.stringify(dragData.value))
   }
 
   element.style.opacity = '0.5'
@@ -828,7 +875,15 @@ const handleDrop = async (event, environmentId) => {
     return
   }
 
-  const result = await deployArtifact(dragData.value, environmentId)
+  const dropPayload = resolveDropPayload(event)
+  if (!dropPayload) {
+    clearDragState()
+    return
+  }
+
+  const payload = { ...dropPayload }
+
+  const result = await deployArtifact(payload, environmentId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
@@ -845,40 +900,8 @@ const resetDragVisuals = () => {
   })
 }
 
-const clearReleaseHighlights = () => {
-  document.querySelectorAll('.release-header, .deployed-release').forEach(element => {
-    element.classList.remove('drag-over')
-  })
-}
-
-const findReleaseDropTarget = event => {
-  if (!(event.target instanceof Element)) {
-    return null
-  }
-
-  return event.target.closest('.release-header, .deployed-release')
-}
-
 const handleDocumentDragEnd = () => {
   clearDragState()
-}
-
-const handleDocumentDragEnter = event => {
-  if (dragData.value?.type !== 'item') {
-    return
-  }
-
-  const dropTarget = findReleaseDropTarget(event)
-  dropTarget?.classList.add('drag-over')
-}
-
-const handleDocumentDragLeave = event => {
-  const dropTarget = findReleaseDropTarget(event)
-  dropTarget?.classList.remove('drag-over')
-}
-
-const handleDocumentDrop = () => {
-  clearReleaseHighlights()
 }
 
 onMounted(async () => {
@@ -888,16 +911,10 @@ onMounted(async () => {
   }
 
   document.addEventListener('dragend', handleDocumentDragEnd)
-  document.addEventListener('dragenter', handleDocumentDragEnter)
-  document.addEventListener('dragleave', handleDocumentDragLeave)
-  document.addEventListener('drop', handleDocumentDrop)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('dragend', handleDocumentDragEnd)
-  document.removeEventListener('dragenter', handleDocumentDragEnter)
-  document.removeEventListener('dragleave', handleDocumentDragLeave)
-  document.removeEventListener('drop', handleDocumentDrop)
 })
 </script>
 
@@ -1083,12 +1100,12 @@ onBeforeUnmount(() => {
 
 .release-card {
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 12px;
   margin-bottom: 16px;
   overflow: hidden;
   transition: all 0.2s ease;
   box-shadow: none;
-  padding: 4px;
+  padding: 10px;
   background: #ffffff;
 }
 
@@ -1099,10 +1116,10 @@ onBeforeUnmount(() => {
 .release-header {
   background: white;
   color: #1e293b;
-  padding: 16px;
+  padding: 0;
   cursor: grab;
   transition: all 0.2s ease;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: none;
 }
 
 .release-header:active {
@@ -1110,15 +1127,15 @@ onBeforeUnmount(() => {
 }
 
 .release-header h3 {
-  margin: 0 0 6px 0;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #0f172a;
+  margin: 0;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .release-description {
   margin: 0 0 8px 0;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: #475569;
 }
 
@@ -1133,9 +1150,15 @@ onBeforeUnmount(() => {
 
 /* Items dentro de releases */
 .items-container {
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 0 0 16px 16px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.available-release .items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .item-card {
@@ -1396,10 +1419,11 @@ onBeforeUnmount(() => {
 }
 
 /* Estilos para release header que acepta drops */
-.release-header.drag-over,
+.release-card.drag-over,
 .deployed-release.drag-over {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
-  transform: scale(1.01);
+  outline: 2px solid #94a3b8;
+  outline-offset: 0;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.2);
 }
 
 /* Colores por prioridad */

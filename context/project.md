@@ -82,6 +82,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Tags de alcance técnico por item (`front`, `back`, `app`) con persistencia en Supabase.
 - Tiempo relativo en ambientes (`hace X`) y tiempo por item dentro de releases desplegados.
 - Los items dentro de un release se pueden desenganchar con un icono `🔓`; si estaban dentro de un release desplegado, pasan a desplegarse como item individual en el mismo ambiente.
+- Al desenganchar desde releases no desplegados, el item pasa a `Items Independientes` y se inserta al inicio para mantener visibilidad inmediata.
 
 ## Reglas de comportamiento observadas
 
@@ -89,7 +90,9 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Un item o release solo puede estar desplegado en un ambiente a la vez; al moverlo, se elimina el despliegue anterior.
 - Los items desplegados individualmente dejan de aparecer como disponibles en su origen.
 - Un item standalone puede incorporarse a un release mediante drag and drop.
+- Un item también puede moverse entre releases disponibles mediante drag and drop.
 - Un item que ya pertenece a un release no puede agregarse a otro release, salvo cuando se mueve explícitamente hacia un release desplegado, caso en el que se remueve del origen.
+- Al incorporar un item a un release disponible, se limpia su despliegue individual activo para que vuelva a verse dentro del release y no quede oculto por filtros de disponibilidad.
 
 ## Limitaciones y deuda técnica visibles
 
@@ -114,6 +117,10 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
 - En items dentro de release, la acción de desenganche usa el SVG `public/lock-unlocked.svg` y queda alineada al extremo derecho del header.
 - Contenedores de release con borde gris claro y radio para delimitar grupos con bajo peso visual.
+- Los releases disponibles (no desplegados) mantienen el mismo lenguaje visual que los releases en ambientes y no muestran contador de cantidad de items.
+- Durante drag sobre releases, el estado de drop target realza solo el borde (sin fondo verde), con trazo más oscuro y más grueso, aplicado sobre toda la superficie del release.
+- El flujo de drag/drop entre releases protege contra estado de drag nulo (`dragData`) para evitar errores de consola al mover items entre releases.
+- El drag/drop usa payload serializado en `dataTransfer` como respaldo del estado reactivo para evitar pérdidas intermitentes de contexto al soltar sobre releases o ambientes.
 
 ## Estado de build verificado
 

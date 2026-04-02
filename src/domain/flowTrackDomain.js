@@ -211,7 +211,7 @@ export const reorderEnvironmentOrder = (environments, sourceEnvironmentId, targe
 }
 
 export const addStandaloneItemToRelease = (state, itemId, releaseId) => {
-  const { standaloneItems, releases } = state
+  const { standaloneItems, releases, deployments } = state
   const item = getItemById(state, itemId)
   const release = getReleaseById(releases, releaseId)
 
@@ -219,12 +219,24 @@ export const addStandaloneItemToRelease = (state, itemId, releaseId) => {
     return { ok: false, reason: '❌ Item o release no encontrado' }
   }
 
-  const isStandaloneItem = standaloneItems.some(standaloneItem => standaloneItem.id === itemId)
-  if (!isStandaloneItem) {
-    return { ok: false, reason: '❌ Este item ya pertenece a un release' }
+  const itemAlreadyInRelease = release.items.some(releaseItem => releaseItem.id === itemId)
+  if (itemAlreadyInRelease) {
+    removeDeploymentByItemId(deployments, itemId)
+    return { ok: true, item, release }
   }
 
-  removeStandaloneItemById(standaloneItems, itemId)
+  const isStandaloneItem = standaloneItems.some(standaloneItem => standaloneItem.id === itemId)
+
+  if (isStandaloneItem) {
+    removeDeploymentByItemId(deployments, itemId)
+    removeStandaloneItemById(standaloneItems, itemId)
+    release.items.push(item)
+
+    return { ok: true, item, release }
+  }
+
+  removeDeploymentByItemId(deployments, itemId)
+  removeItemFromOtherReleases(releases, itemId, releaseId)
   release.items.push(item)
 
   return { ok: true, item, release }
@@ -311,7 +323,7 @@ export const detachItemFromRelease = (state, itemId, releaseId, options = {}) =>
 
   const existsInStandalone = standaloneItems.some(standaloneItem => standaloneItem.id === item.id)
   if (!existsInStandalone) {
-    standaloneItems.push(item)
+    standaloneItems.unshift(item)
   }
 
   const releaseDeployment = deployments.find(deployment => {
