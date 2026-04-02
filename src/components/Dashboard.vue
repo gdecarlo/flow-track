@@ -197,8 +197,7 @@
 
       <!-- Columna Derecha: Tablero Kanban de Ambientes -->
       <div class="right-column">
-        <div class="section-header">
-          <h2 class="section-title">Ambientes de Despliegue</h2>
+        <div class="section-header environments-header">
           <button 
             class="add-item-btn"
             @click="toggleNewEnvironmentForm"
@@ -1006,6 +1005,11 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
 }
 
+.environments-header {
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
 .section-header .section-title {
   margin-bottom: 0;
   border-bottom: none;
@@ -1028,12 +1032,14 @@ onBeforeUnmount(() => {
 }
 
 .release-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   border-radius: 16px;
   margin-bottom: 16px;
   overflow: hidden;
   transition: all 0.2s ease;
   box-shadow: none;
+  padding: 4px;
+  background: #ffffff;
 }
 
 .release-card:hover {
@@ -1704,11 +1710,11 @@ onBeforeUnmount(() => {
 }
 
 .deployed-release {
-  background: transparent;
-  padding: 8px 0 0;
-  border-radius: 0;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 12px;
   box-shadow: none;
-  border-top: 1px dashed #d1d5db;
+  border: 1px solid #e5e7eb;
 }
 
 .deployed-item.item-feature,
