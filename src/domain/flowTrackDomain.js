@@ -4,7 +4,22 @@ const deployedTypeOrder = {
   feature: 3
 }
 
+export const environmentKinds = {
+  pool: 'pool',
+  standard: 'standard',
+  production: 'production'
+}
+
+export const poolEnvironmentId = 'pool'
+export const poolEnvironmentName = 'Pool'
+
 const validAreas = ['front', 'back', 'app']
+
+const fixedKindOrder = {
+  [environmentKinds.pool]: 1,
+  [environmentKinds.standard]: 2,
+  [environmentKinds.production]: 3
+}
 
 const removeDeploymentByItemId = (deployments, itemId) => {
   for (let index = deployments.length - 1; index >= 0; index -= 1) {
@@ -47,6 +62,57 @@ export const formatDate = date => {
 }
 
 export const formatReleaseName = rawName => `Release ${rawName.trim()}`
+
+export const isPoolEnvironment = environment => environment?.kind === environmentKinds.pool
+
+export const isProductionEnvironment = environment => environment?.kind === environmentKinds.production
+
+export const isFixedEnvironment = environment => Boolean(environment?.isFixed)
+
+export const sortEnvironments = environments => {
+  return [...environments].sort((firstEnvironment, secondEnvironment) => {
+    const firstOrder = Number.isFinite(firstEnvironment?.order) ? firstEnvironment.order : 999
+    const secondOrder = Number.isFinite(secondEnvironment?.order) ? secondEnvironment.order : 999
+
+    if (firstOrder !== secondOrder) {
+      return firstOrder - secondOrder
+    }
+
+    const firstKindOrder = fixedKindOrder[firstEnvironment?.kind] || 999
+    const secondKindOrder = fixedKindOrder[secondEnvironment?.kind] || 999
+
+    return firstKindOrder - secondKindOrder
+  })
+}
+
+export const normalizeEnvironmentLayout = environments => {
+  const poolEnvironments = sortEnvironments(environments).filter(isPoolEnvironment)
+  const standardEnvironments = sortEnvironments(environments).filter(environment => {
+    return environment?.kind === environmentKinds.standard
+  })
+  const productionEnvironments = sortEnvironments(environments).filter(isProductionEnvironment)
+
+  const orderedEnvironments = [
+    ...poolEnvironments,
+    ...standardEnvironments,
+    ...productionEnvironments
+  ]
+
+  orderedEnvironments.forEach((environment, index) => {
+    environment.order = index + 1
+  })
+
+  return environments
+}
+
+export const createPoolEnvironment = () => ({
+  id: poolEnvironmentId,
+  name: poolEnvironmentName,
+  description: 'Contenedor inicial de artefactos',
+  order: 1,
+  kind: environmentKinds.pool,
+  isFixed: true
+})
 
 export const getReleaseById = (releases, releaseId) => {
   return releases.find(release => release.id === releaseId) ?? null
@@ -152,14 +218,19 @@ export const createRelease = rawName => {
 }
 
 export const createEnvironment = (rawName, environments) => {
-  const maxOrder = Math.max(...environments.map(environment => environment.order || 0), 0)
-
-  return {
+  const environment = {
     id: `env-${Date.now()}`,
     name: rawName.trim(),
     description: `Ambiente ${rawName.trim()}`,
-    order: maxOrder + 1
+    order: Math.max(...environments.map(currentEnvironment => currentEnvironment.order || 0), 0) + 1,
+    kind: environmentKinds.standard,
+    isFixed: false
   }
+
+  environments.push(environment)
+  normalizeEnvironmentLayout(environments)
+
+  return environment
 }
 
 export const moveEnvironmentOrder = (environments, environmentId, direction) => {
@@ -189,25 +260,43 @@ export const reorderEnvironmentOrder = (environments, sourceEnvironmentId, targe
     return null
   }
 
-  const sortedEnvironments = [...environments].sort((firstEnvironment, secondEnvironment) => {
-    return (firstEnvironment.order || 999) - (secondEnvironment.order || 999)
-  })
+  const sourceEnvironment = environments.find(environment => environment.id === sourceEnvironmentId)
+  const targetEnvironment = environments.find(environment => environment.id === targetEnvironmentId)
 
-  const sourceIndex = sortedEnvironments.findIndex(environment => environment.id === sourceEnvironmentId)
-  const targetIndex = sortedEnvironments.findIndex(environment => environment.id === targetEnvironmentId)
+  if (!sourceEnvironment || !targetEnvironment) {
+    return null
+  }
+
+  if (isFixedEnvironment(sourceEnvironment) || isFixedEnvironment(targetEnvironment)) {
+    return null
+  }
+
+  const sortedEnvironments = sortEnvironments(environments)
+  const movableEnvironments = sortedEnvironments.filter(environment => !isFixedEnvironment(environment))
+
+  const sourceIndex = movableEnvironments.findIndex(environment => environment.id === sourceEnvironmentId)
+  const targetIndex = movableEnvironments.findIndex(environment => environment.id === targetEnvironmentId)
 
   if (sourceIndex === -1 || targetIndex === -1) {
     return null
   }
 
-  const [sourceEnvironment] = sortedEnvironments.splice(sourceIndex, 1)
-  sortedEnvironments.splice(targetIndex, 0, sourceEnvironment)
+  const [movedEnvironment] = movableEnvironments.splice(sourceIndex, 1)
+  movableEnvironments.splice(targetIndex, 0, movedEnvironment)
 
-  sortedEnvironments.forEach((environment, index) => {
+  const fixedEnvironments = sortedEnvironments.filter(isFixedEnvironment)
+  const poolEnvironments = fixedEnvironments.filter(isPoolEnvironment)
+  const productionEnvironments = fixedEnvironments.filter(isProductionEnvironment)
+
+  ;[
+    ...poolEnvironments,
+    ...movableEnvironments,
+    ...productionEnvironments
+  ].forEach((environment, index) => {
     environment.order = index + 1
   })
 
-  return sourceEnvironment
+  return movedEnvironment
 }
 
 export const addStandaloneItemToRelease = (state, itemId, releaseId) => {

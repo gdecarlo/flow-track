@@ -8,6 +8,7 @@ import {
   createEnvironment,
   createRelease,
   createStandaloneItem,
+  environmentKinds,
   formatDate,
   getAvailableItemsForRelease,
   getAvailableReleases,
@@ -18,7 +19,12 @@ import {
   getReleaseById,
   hasDuplicateEnvironmentName,
   hasDuplicateReleaseName,
+  isPoolEnvironment,
+  isProductionEnvironment,
+  isFixedEnvironment,
+  normalizeEnvironmentLayout,
   reorderEnvironmentOrder,
+  sortEnvironments,
   toggleItemAreaSelection
 } from '../domain/flowTrackDomain'
 import { createFlowTrackSnapshotRepository } from '../services/persistence/flowTrackSnapshotRepository'
@@ -133,9 +139,19 @@ export const useFlowTrackDomain = () => {
   })
 
   const sortedEnvironments = computed(() => {
-    return [...environments.value].sort((firstEnvironment, secondEnvironment) => {
-      return (firstEnvironment.order || 999) - (secondEnvironment.order || 999)
-    })
+    return sortEnvironments(environments.value)
+  })
+
+  const poolEnvironment = computed(() => {
+    return sortedEnvironments.value.find(isPoolEnvironment) ?? null
+  })
+
+  const standardEnvironments = computed(() => {
+    return sortedEnvironments.value.filter(environment => environment.kind === environmentKinds.standard)
+  })
+
+  const productionEnvironment = computed(() => {
+    return sortedEnvironments.value.find(isProductionEnvironment) ?? null
   })
 
   const createNewItem = draft => {
@@ -190,7 +206,6 @@ export const useFlowTrackDomain = () => {
       }
 
       const environment = createEnvironment(trimmedName, environments.value)
-      environments.value.push(environment)
       console.log(`✅ Nuevo ambiente creado: ${environment.name}`)
 
       return { ok: true, environment }
@@ -206,7 +221,10 @@ export const useFlowTrackDomain = () => {
       )
 
       if (environment) {
+        normalizeEnvironmentLayout(environments.value)
         console.log(`↕ Ambiente ${environment.name} reordenado por drag and drop`)
+      } else {
+        return { ok: false, reason: '❌ No se puede reordenar ese ambiente' }
       }
 
       return { ok: true, environment }
@@ -251,7 +269,13 @@ export const useFlowTrackDomain = () => {
     availableReleases,
     availableStandaloneItems,
     sortedEnvironments,
+    standardEnvironments,
+    poolEnvironment,
+    productionEnvironment,
     formatDate,
+    isPoolEnvironment,
+    isProductionEnvironment,
+    isFixedEnvironment,
     getAvailableItemsForRelease: release => getAvailableItemsForRelease(release, deployments.value),
     getDeploymentsByEnvironment: environmentId => getDeploymentsByEnvironment(deployments.value, environmentId),
     getReleaseById: releaseId => getReleaseById(releases.value, releaseId),

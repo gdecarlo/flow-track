@@ -1,3 +1,13 @@
+import {
+  createPoolEnvironment,
+  environmentKinds,
+  isPoolEnvironment,
+  isProductionEnvironment,
+  normalizeEnvironmentLayout,
+  poolEnvironmentId,
+  poolEnvironmentName
+} from '../../domain/flowTrackDomain'
+
 export const createEmptyFlowTrackState = () => ({
   standaloneItems: [],
   releases: [],
@@ -53,12 +63,56 @@ const normalizeRelease = release => ({
   items: Array.isArray(release?.items) ? release.items.map(normalizeItem) : []
 })
 
-const normalizeEnvironment = environment => ({
-  id: environment?.id ?? '',
-  name: environment?.name ?? '',
-  description: environment?.description ?? '',
-  order: Number.isFinite(environment?.order) ? environment.order : 0
-})
+const inferEnvironmentKind = environment => {
+  const normalizedKind = environment?.kind
+  if (normalizedKind === environmentKinds.pool || normalizedKind === environmentKinds.standard || normalizedKind === environmentKinds.production) {
+    return normalizedKind
+  }
+
+  const normalizedName = environment?.name?.trim().toLowerCase()
+  if (environment?.id === poolEnvironmentId || normalizedName === poolEnvironmentName.toLowerCase()) {
+    return environmentKinds.pool
+  }
+
+  if (normalizedName === 'prod') {
+    return environmentKinds.production
+  }
+
+  return environmentKinds.standard
+}
+
+const normalizeEnvironment = environment => {
+  const kind = inferEnvironmentKind(environment)
+  const isFixed = kind === environmentKinds.pool || kind === environmentKinds.production
+
+  return {
+    id: environment?.id ?? '',
+    name: environment?.name ?? '',
+    description: environment?.description ?? '',
+    order: Number.isFinite(environment?.order) ? environment.order : 0,
+    kind,
+    isFixed: typeof environment?.isFixed === 'boolean' ? environment.isFixed || isFixed : isFixed
+  }
+}
+
+const normalizeEnvironments = environments => {
+  const normalizedEnvironments = Array.isArray(environments)
+    ? environments.map(normalizeEnvironment)
+    : []
+
+  if (!normalizedEnvironments.some(isPoolEnvironment)) {
+    normalizedEnvironments.push(createPoolEnvironment())
+  }
+
+  normalizedEnvironments.forEach(environment => {
+    if (isPoolEnvironment(environment) || isProductionEnvironment(environment)) {
+      environment.isFixed = true
+    }
+  })
+
+  normalizeEnvironmentLayout(normalizedEnvironments)
+  return normalizedEnvironments
+}
 
 const normalizeDeployment = deployment => ({
   id: deployment?.id ?? '',
@@ -82,9 +136,7 @@ export const deserializeFlowTrackState = state => {
     releases: Array.isArray(sourceState.releases)
       ? sourceState.releases.map(normalizeRelease)
       : [],
-    environments: Array.isArray(sourceState.environments)
-      ? sourceState.environments.map(normalizeEnvironment)
-      : [],
+    environments: normalizeEnvironments(sourceState.environments),
     deployments: Array.isArray(sourceState.deployments)
       ? sourceState.deployments.map(normalizeDeployment)
       : []

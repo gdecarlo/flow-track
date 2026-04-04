@@ -69,22 +69,36 @@ export const createInitialReleases = () => [
 
 export const createInitialEnvironments = () => [
   {
+    id: 'pool',
+    name: 'Pool',
+    description: 'Contenedor inicial de artefactos',
+    order: 1,
+    kind: 'pool',
+    isFixed: true
+  },
+  {
     id: 'test',
     name: 'Test',
     description: 'Ambiente de pruebas',
-    order: 1
+    order: 2,
+    kind: 'standard',
+    isFixed: false
   },
   {
     id: 'demo',
     name: 'Demo',
     description: 'Ambiente de demostración',
-    order: 2
+    order: 3,
+    kind: 'standard',
+    isFixed: false
   },
   {
     id: 'prod',
     name: 'Prod',
     description: 'Ambiente de producción',
-    order: 3
+    order: 4,
+    kind: 'production',
+    isFixed: true
   }
 ]
 

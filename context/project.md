@@ -8,8 +8,8 @@ Flow Track es una SPA construida con Vue 3 y Vite para visualizar y mover releas
 
 La interfaz modela un flujo simple de despliegue:
 
-- A la izquierda se administran releases e items disponibles.
-- A la derecha se muestran ambientes de despliegue en formato kanban.
+- Un rail lateral minimalista permite crear releases, features, hotfixes y ambientes mediante modales centrados.
+- El tablero muestra un carril inicial `Pool` y luego los ambientes de despliegue en formato kanban.
 - Los elementos se pueden arrastrar entre zonas para simular despliegues.
 - También se pueden crear nuevos items, releases y ambientes desde la UI.
 
@@ -40,7 +40,7 @@ La interfaz modela un flujo simple de despliegue:
 
 - `src/main.js`: monta la aplicación Vue.
 - `src/App.vue`: layout principal con navbar y carga del dashboard.
-- `src/components/Dashboard.vue`: concentra el template, el estado efímero de formularios y la coordinación de eventos de drag and drop.
+- `src/components/Dashboard.vue`: concentra el rail de creación, los modales, el tablero de ambientes y la coordinación de eventos de drag and drop.
 - `src/composables/useFlowTrackDomain.js`: expone el estado reactivo del dominio, inicializa el snapshot desde Supabase y persiste cada operación del tablero.
 - `src/domain/flowTrackDomain.js`: contiene reglas y utilidades del dominio para releases, items, ambientes y despliegues.
 - `src/domain/flowTrackSeed.js`: quedó como referencia histórica, pero ya no participa en el flujo runtime principal.
@@ -58,20 +58,19 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 
 - `Item`: unidad individual de trabajo con `id`, `title`, `description`, `type`, `priority` y `areas` (`front`, `back`, `app`).
 - `Release`: agrupación de items con `id`, `name`, `description` e `items`.
-- `Environment`: ambiente de despliegue con `id`, `name`, `description` y `order`.
+- `Environment`: ambiente de despliegue con `id`, `name`, `description`, `order`, `kind` (`pool`, `standard`, `production`) e `isFixed`.
 - `Deployment`: relación entre un item o release y un ambiente, con fecha de despliegue, snapshot de items y timestamps por item en releases desplegados (`itemDeploymentTimes`).
 
 ## Funcionalidades implementadas
 
-- Visualización de releases disponibles y sus items no desplegados individualmente.
-- Visualización de items independientes no asociados a un release.
-- Visualización de ambientes ordenados por la propiedad `order`.
+- Visualización de un carril `Pool` al inicio del tablero para artefactos recién creados o devueltos.
+- Visualización de ambientes ordenados por la propiedad `order`, con `Pool` al inicio y `Prod` fijo.
 - Carga inicial del tablero desde Supabase al montar la UI.
 - Persistencia del snapshot completo en Supabase después de cada mutación válida.
-- Creación de items independientes desde formulario inline.
-- Creación de releases vacíos desde formulario inline.
-- Creación de nuevos ambientes desde formulario inline.
-- Reordenamiento de ambientes por drag and drop desde la cabecera de cada ambiente.
+- Creación de features y hotfixes desde modales centrados disparados por iconos.
+- Creación de releases vacíos desde modal centrado.
+- Creación de nuevos ambientes desde modal centrado.
+- Reordenamiento de ambientes por drag and drop desde la cabecera, excepto ambientes fijos.
 - Drag and drop de items y releases hacia ambientes.
 - Drag and drop de items standalone hacia releases.
 - Drag and drop de items ya desplegados hacia releases desplegados.
@@ -82,7 +81,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Tags de alcance técnico por item (`front`, `back`, `app`) con persistencia en Supabase.
 - Tiempo relativo en ambientes (`hace X`) y tiempo por item dentro de releases desplegados.
 - Los items dentro de un release se pueden desenganchar con un icono `🔓`; si estaban dentro de un release desplegado, pasan a desplegarse como item individual en el mismo ambiente.
-- Al desenganchar desde releases no desplegados, el item pasa a `Items Independientes` y se inserta al inicio para mantener visibilidad inmediata.
+- Al desenganchar desde releases no desplegados, el item vuelve a quedar disponible y reaparece en `Pool`.
+- Los snapshots viejos se normalizan automáticamente para agregar `Pool` y tipar `Prod` como ambiente fijo de producción.
 
 ## Reglas de comportamiento observadas
 
@@ -93,6 +93,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Un item también puede moverse entre releases disponibles mediante drag and drop.
 - Un item que ya pertenece a un release no puede agregarse a otro release, salvo cuando se mueve explícitamente hacia un release desplegado, caso en el que se remueve del origen.
 - Al incorporar un item a un release disponible, se limpia su despliegue individual activo para que vuelva a verse dentro del release y no quede oculto por filtros de disponibilidad.
+- `Pool` y `Prod` son ambientes fijos; no participan del reordenamiento horizontal.
+- `Prod` queda marcado como ambiente especial mediante metadata (`kind: production`) y un tratamiento visual sutilmente distinto.
 
 ## Limitaciones y deuda técnica visibles
 
@@ -106,6 +108,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - `index.html` sigue con metadatos iniciales de plantilla y no refleja la marca del producto.
 - La dependencia `vue-draggable-next` está instalada, pero el tablero usa drag and drop nativo.
 - No hay tests, linting ni tipado estático.
+- `Nuevo fix` ya no existe en UI; los items `fix` previos siguen cargando por compatibilidad.
 
 ## UI actual
 
@@ -113,8 +116,9 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Navbar superior simple con el nombre Flow Track.
 - El texto `Último guardado ...` se muestra inline junto al título `Flow Track` en la navbar.
 - El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
-- Columna izquierda para artefactos y formularios de alta, con trigger de ambiente como link `nuevo ambiente`.
-- Columna derecha para ambientes de despliegue con scroll horizontal en pantallas pequeñas.
+- Rail lateral vertical con iconos para `Nuevo release`, `Nuevo feature`, `Nuevo ambiente` y `Nuevo hotfix`.
+- Modales centrados con overlay para las altas.
+- Tablero horizontal de ambientes con `Pool` como primera columna.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
 - En items dentro de release, la acción de desenganche usa el SVG `public/lock-unlocked.svg` y queda alineada al extremo derecho del header.

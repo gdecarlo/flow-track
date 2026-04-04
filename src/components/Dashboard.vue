@@ -1,6 +1,5 @@
 <template>
   <div class="deployment-dashboard">
-
     <div v-if="isInitializing" class="dashboard-state-panel">
       <h2 class="dashboard-state-title">Cargando tablero</h2>
       <p class="dashboard-state-copy">Recuperando el snapshot compartido desde Supabase.</p>
@@ -13,232 +12,32 @@
     </div>
 
     <div v-else class="dashboard-container">
-      <!-- Columna Izquierda: Lista de Artefactos -->
-      <div class="left-column">
-        <div class="left-column-header">
-          <h2 class="section-title">Artefactos</h2>
-          <button
-            class="new-environment-link"
-            @click="toggleNewEnvironmentForm"
-            :disabled="isBusy"
-          >
-            nuevo ambiente
-          </button>
-        </div>
-        
-        <!-- Releases con Items -->
-        <div class="releases-container">
-          <div class="subsection-header">
-            <h3 class="subsection-title">Releases</h3>
-            <button 
-              class="add-item-btn"
-              @click="toggleNewReleaseForm"
-              :disabled="isBusy"
-              :class="{ 'active': showNewReleaseForm }"
-            >
-              <span class="add-icon">{{ showNewReleaseForm ? '×' : '+' }}</span>
-            </button>
-          </div>
+      <aside class="action-rail" aria-label="Acciones de creación">
+        <button
+          v-for="action in creationActions"
+          :key="action.kind"
+          class="action-rail-btn"
+          :class="{ active: activeModal === action.kind }"
+          :disabled="isBusy"
+          :title="action.label"
+          @click="openCreationModal(action.kind)"
+        >
+          <img :src="action.icon" :alt="action.label" class="action-rail-icon" />
+          <span class="sr-only">{{ action.label }}</span>
+        </button>
+      </aside>
 
-          <!-- Formulario para nuevo release -->
-          <div v-if="showNewReleaseForm" class="new-item-form">
-            <input
-              ref="releaseNameInput"
-              v-model="newRelease.name"
-              type="text"
-              placeholder="Numero de release. Ej: 3.2.1"
-              :disabled="isBusy"
-              class="item-title-input"
-              :class="{ 'error': isDuplicateRelease }"
-              @keyup.enter="createNewRelease"
-              @keyup.escape="cancelNewRelease"
-            />
-            <div v-if="isDuplicateRelease" class="error-message">
-              ⚠️ Ya existe un release con este nombre
-            </div>
-            <div class="form-controls">
-              <div class="form-buttons">
-                <button @click="createNewRelease" class="save-btn" :disabled="!newRelease.name.trim() || isDuplicateRelease">
-                  ✓
-                </button>
-                <button @click="cancelNewRelease" class="cancel-btn" :disabled="isSaving">
-                  ×
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            v-for="release in availableReleases" 
-            :key="release.id" 
-            class="release-card available-release"
-            :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
-            @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
-            @drop="handleDropOnRelease($event, release.id)"
-          >
-            <div 
-              class="release-header draggable-item"
-              :data-type="'release'"
-              :data-id="release.id"
-              :draggable="!isBusy"
-              @dragstart="handleDragStart"
-            >
-              <h3>{{ release.name }}</h3>
-              <p class="release-description">{{ release.description }}</p>
-            </div>
-            
-            <!-- Items dentro del Release que están disponibles -->
-            <div class="items-container" v-if="getAvailableItemsForRelease(release).length > 0">
-              <div
-                v-for="item in getAvailableItemsForRelease(release)"
-                :key="item.id"
-                class="item-card draggable-item"
-                :class="`item-${item.type}`"
-                :data-type="'item'"
-                :data-id="item.id"
-                :data-release-id="release.id"
-                draggable="true"
-                @dragstart="handleDragStart"
-              >
-                <div class="item-top-slot item-top-actions">
-                  <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
-                  <button
-                    class="item-detach-btn"
-                    title="Desenganchar del release"
-                    @click.stop="handleDetachItem(item.id, release.id)"
-                  >
-                    <img src="/lock-unlocked.svg" alt="Desenganchar item" class="item-detach-icon" />
-                  </button>
-                </div>
-                <p class="item-title">{{ item.title }}</p>
-                <p class="item-description">{{ getItemDescription(item) }}</p>
-                <div class="item-footer">
-                  <div class="item-area-group">
-                    <button
-                      v-for="area in itemAreas"
-                      :key="`${item.id}-${area}`"
-                      class="item-area-tag"
-                      :class="{ active: isAreaSelected(item, area) }"
-                      @click.stop="handleToggleItemArea(item.id, area)"
-                    >
-                      {{ area }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Items sin Release -->
-        <div class="standalone-items">
-          <div class="subsection-header">
-            <h3 class="subsection-title">Items Independientes</h3>
-            <button 
-              class="add-item-btn"
-              @click="toggleNewItemForm"
-              :disabled="isBusy"
-              :class="{ 'active': showNewItemForm }"
-            >
-              <span class="add-icon">{{ showNewItemForm ? '×' : '+' }}</span>
-            </button>
-          </div>
-
-          <!-- Formulario para nuevo item -->
-          <div v-if="showNewItemForm" class="new-item-form">
-            <input
-              ref="titleInput"
-              v-model="newItem.title"
-              type="text"
-              placeholder="Título del item..."
-              :disabled="isBusy"
-              class="item-title-input"
-              @keyup.enter="createNewItem"
-              @keyup.escape="cancelNewItem"
-            />
-            <div class="form-controls">
-              <select v-model="newItem.type" class="item-type-select" :disabled="isBusy">
-                <option value="feature">Feature</option>
-                <option value="fix">Fix</option>
-                <option value="hotfix">Hotfix</option>
-              </select>
-              <div class="form-buttons">
-                <button @click="createNewItem" class="save-btn" :disabled="!newItem.title.trim() || isBusy">
-                  ✓
-                </button>
-                <button @click="cancelNewItem" class="cancel-btn" :disabled="isSaving">
-                  ×
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-for="item in availableStandaloneItems"
-            :key="item.id"
-            class="item-card draggable-item"
-            :class="`item-${item.type}`"
-            :data-type="'item'"
-            :data-id="item.id"
-            :draggable="!isBusy"
-            @dragstart="handleDragStart"
-          >
-            <div class="item-top-slot">
-              <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
-            </div>
-            <p class="item-title">{{ item.title }}</p>
-            <p class="item-description">{{ getItemDescription(item) }}</p>
-            <div class="item-footer">
-              <div class="item-area-group">
-                <button
-                  v-for="area in itemAreas"
-                  :key="`${item.id}-${area}`"
-                  class="item-area-tag"
-                  :class="{ active: isAreaSelected(item, area) }"
-                  @click.stop="handleToggleItemArea(item.id, area)"
-                >
-                  {{ area }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Columna Derecha: Tablero Kanban de Ambientes -->
-      <div class="right-column">
-        <!-- Formulario para nuevo ambiente -->
-        <div v-if="showNewEnvironmentForm" class="new-environment-form">
-          <input
-            ref="environmentNameInput"
-            v-model="newEnvironment.name"
-            type="text"
-            placeholder="Nombre del ambiente..."
-            :disabled="isBusy"
-            class="environment-name-input"
-            @keyup.enter="createNewEnvironment"
-            @keyup.escape="cancelNewEnvironment"
-          />
-          <div class="form-controls">
-            <div class="form-buttons">
-              <button @click="createNewEnvironment" class="save-btn" :disabled="!newEnvironment.name.trim() || isDuplicateEnvironment || isBusy">
-                ✓
-              </button>
-              <button @click="cancelNewEnvironment" class="cancel-btn" :disabled="isSaving">
-                ×
-              </button>
-            </div>
-          </div>
-          <div v-if="isDuplicateEnvironment" class="error-message">
-            ⚠️ Ya existe un ambiente con este nombre
-          </div>
-        </div>
-        
+      <section class="board-shell">
         <div class="kanban-board">
-          <div 
-            v-for="environment in sortedEnvironments" 
+          <div
+            v-for="environment in boardEnvironments"
             :key="environment.id"
             class="environment-column"
+            :class="{
+              'is-pool': isPoolEnvironment(environment),
+              'is-production': isProductionEnvironment(environment),
+              'is-fixed': isFixedEnvironment(environment)
+            }"
             @dragover.prevent
             @dragenter.prevent
             @drop="handleDrop($event, environment.id)"
@@ -247,106 +46,266 @@
               class="environment-header"
               :class="{
                 'is-drag-source': draggedEnvironmentId === environment.id,
-                'is-drag-over': dragOverEnvironmentId === environment.id
+                'is-drag-over': dragOverEnvironmentId === environment.id,
+                'is-static': !canReorderEnvironment(environment)
               }"
-              :draggable="!isBusy"
+              :draggable="canReorderEnvironment(environment)"
               @dragstart="handleEnvironmentDragStart($event, environment.id)"
               @dragover.prevent="handleEnvironmentDragOver($event, environment.id)"
               @drop="handleEnvironmentDrop($event, environment.id)"
               @dragend="handleEnvironmentDragEnd"
             >
-              <div class="environment-title">
-                <h3>{{ environment.name }}</h3>
+              <div class="environment-title-wrap">
+                <h3 class="environment-title">{{ environment.name }}</h3>
+                <span v-if="isPoolEnvironment(environment)" class="environment-chip">origen</span>
               </div>
             </div>
-            
+
             <div class="deployments-container">
-              <!-- Releases desplegados -->
-              <div
-                v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'release')"
-                :key="`release-${deployment.itemId}`"
-                class="deployed-release draggable-item"
-                :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
-                :data-type="'release'"
-                :data-id="deployment.itemId"
-                :draggable="!isBusy"
-                @dragstart="handleDragStart"
-                @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
-                @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
-              >
-                <div class="deployment-header">
-                  <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
-                  <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
-                </div>
-                <div class="deployment-items">
-                  <div v-for="item in getDeployedReleaseItems(deployment)" 
-                        :key="item.id" 
-                        class="deployed-item-detail"
-                        :class="`item-${item.type}`">
-                    <div class="item-top-slot item-top-actions">
-                      <span v-if="item.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
-                      <button
-                        class="item-detach-btn"
-                        title="Desenganchar del release"
-                        @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
-                      >
-                        <img src="/lock-unlocked.svg" alt="Desenganchar item" class="item-detach-icon" />
-                      </button>
-                    </div>
-                    <span class="item-title">{{ item.title }}</span>
-                    <p class="item-description">{{ getItemDescription(item) }}</p>
-                    <div class="item-footer">
-                      <div class="item-area-group">
+              <template v-if="isPoolEnvironment(environment)">
+                <div
+                  v-for="release in poolReleases"
+                  :key="release.id"
+                  class="release-card available-release"
+                  :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
+                  @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
+                  @drop="handleDropOnRelease($event, release.id)"
+                >
+                  <div
+                    class="release-header draggable-item"
+                    :data-type="'release'"
+                    :data-id="release.id"
+                    :draggable="!isBusy"
+                    @dragstart="handleDragStart"
+                  >
+                    <h4>{{ release.name }}</h4>
+                    <p v-if="release.description" class="release-description">{{ release.description }}</p>
+                  </div>
+
+                  <div v-if="getAvailableItemsForRelease(release).length > 0" class="items-container">
+                    <div
+                      v-for="item in getAvailableItemsForRelease(release)"
+                      :key="item.id"
+                      class="item-card draggable-item"
+                      :class="`item-${item.type}`"
+                      :data-type="'item'"
+                      :data-id="item.id"
+                      :data-release-id="release.id"
+                      :draggable="!isBusy"
+                      @dragstart="handleDragStart"
+                    >
+                      <div class="item-header-row">
+                        <p class="item-title">{{ item.title }}</p>
                         <button
-                          v-for="area in itemAreas"
-                          :key="`${item.id}-${area}`"
-                          class="item-area-tag"
-                          :class="{ active: isAreaSelected(item, area) }"
-                          @click.stop="handleToggleItemArea(item.id, area)"
+                          class="item-detach-btn"
+                          title="Desenganchar del release"
+                          @click.stop="handleDetachItem(item.id, release.id)"
                         >
-                          {{ area }}
+                          <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
                         </button>
                       </div>
-                      <span class="item-env-time">{{ formatRelativeTime(getDeploymentItemTime(deployment, item.id)) }}</span>
+                      <p class="item-description">{{ getItemMetaLabel(item) }}</p>
+                      <div class="item-footer">
+                        <div class="item-area-group">
+                          <button
+                            v-for="area in itemAreas"
+                            :key="`${item.id}-${area}`"
+                            class="item-area-tag"
+                            :class="{ active: isAreaSelected(item, area) }"
+                            @click.stop="handleToggleItemArea(item.id, area)"
+                          >
+                            {{ area }}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Items individuales desplegados -->
-              <div
-                v-for="deployment in getDeploymentsByEnvironment(environment.id).filter(d => d.type === 'item')"
-                :key="`item-${deployment.itemId}`"
-                class="deployed-item draggable-item"
-                :class="`item-${getItemById(deployment.itemId)?.type}`"
-                :data-type="'item'"
-                :data-id="deployment.itemId"
-                :draggable="!isBusy"
-                @dragstart="handleDragStart"
-              >
-                <div class="item-top-slot">
-                  <span v-if="getItemById(deployment.itemId)?.type === 'hotfix'" class="item-hotfix-tag">hotfix</span>
-                </div>
-                <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
-                <p class="item-description">{{ getItemDescription(getItemById(deployment.itemId)) }}</p>
-                <div class="item-footer">
-                  <div class="item-area-group">
-                    <button
-                      v-for="area in itemAreas"
-                      :key="`${deployment.itemId}-${area}`"
-                      class="item-area-tag"
-                      :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
-                      @click.stop="handleToggleItemArea(deployment.itemId, area)"
-                    >
-                      {{ area }}
-                    </button>
+                <div
+                  v-for="item in poolItems"
+                  :key="item.id"
+                  class="item-card draggable-item"
+                  :class="`item-${item.type}`"
+                  :data-type="'item'"
+                  :data-id="item.id"
+                  :draggable="!isBusy"
+                  @dragstart="handleDragStart"
+                >
+                  <p class="item-title">{{ item.title }}</p>
+                  <p class="item-description">{{ getItemMetaLabel(item) }}</p>
+                  <div class="item-footer">
+                    <div class="item-area-group">
+                      <button
+                        v-for="area in itemAreas"
+                        :key="`${item.id}-${area}`"
+                        class="item-area-tag"
+                        :class="{ active: isAreaSelected(item, area) }"
+                        @click.stop="handleToggleItemArea(item.id, area)"
+                      >
+                        {{ area }}
+                      </button>
+                    </div>
                   </div>
-                  <span class="item-env-time">{{ formatRelativeTime(deployment.deployedAt) }}</span>
                 </div>
-              </div>
+
+                <p v-if="poolReleases.length === 0 && poolItems.length === 0" class="empty-column-copy">
+                  Todo lo nuevo aparece acá.
+                </p>
+              </template>
+
+              <template v-else>
+                <div
+                  v-for="deployment in getReleaseDeployments(environment.id)"
+                  :key="`release-${deployment.itemId}`"
+                  class="deployed-release draggable-item"
+                  :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
+                  :data-type="'release'"
+                  :data-id="deployment.itemId"
+                  :draggable="!isBusy"
+                  @dragstart="handleDragStart"
+                  @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
+                  @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
+                >
+                  <div class="deployment-header">
+                    <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                    <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
+                  </div>
+
+                  <div class="deployment-items">
+                    <div
+                      v-for="item in getDeployedReleaseItems(deployment)"
+                      :key="item.id"
+                      class="deployed-item-detail"
+                      :class="`item-${item.type}`"
+                    >
+                      <div class="item-header-row">
+                        <span class="item-title">{{ item.title }}</span>
+                        <button
+                          class="item-detach-btn"
+                          title="Desenganchar del release"
+                          @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
+                        >
+                          <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
+                        </button>
+                      </div>
+                      <p class="item-description">{{ getItemMetaLabel(item, getDeploymentItemTime(deployment, item.id)) }}</p>
+                      <div class="item-footer">
+                        <div class="item-area-group">
+                          <button
+                            v-for="area in itemAreas"
+                            :key="`${item.id}-${area}`"
+                            class="item-area-tag"
+                            :class="{ active: isAreaSelected(item, area) }"
+                            @click.stop="handleToggleItemArea(item.id, area)"
+                          >
+                            {{ area }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-for="deployment in getItemDeployments(environment.id)"
+                  :key="`item-${deployment.itemId}`"
+                  class="deployed-item draggable-item"
+                  :class="`item-${getItemById(deployment.itemId)?.type}`"
+                  :data-type="'item'"
+                  :data-id="deployment.itemId"
+                  :draggable="!isBusy"
+                  @dragstart="handleDragStart"
+                >
+                  <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                  <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
+                  <div class="item-footer">
+                    <div class="item-area-group">
+                      <button
+                        v-for="area in itemAreas"
+                        :key="`${deployment.itemId}-${area}`"
+                        class="item-area-tag"
+                        :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
+                        @click.stop="handleToggleItemArea(deployment.itemId, area)"
+                      >
+                        {{ area }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p
+                  v-if="getReleaseDeployments(environment.id).length === 0 && getItemDeployments(environment.id).length === 0"
+                  class="empty-column-copy"
+                >
+                  Sin despliegues todavía.
+                </p>
+              </template>
             </div>
           </div>
         </div>
+      </section>
+    </div>
+
+    <div v-if="activeModal" class="creation-modal-backdrop" @click="handleBackdropClick">
+      <div class="creation-modal" role="dialog" aria-modal="true" :aria-labelledby="`modal-title-${activeModal}`" @click.stop>
+        <div class="creation-modal-header">
+          <div>
+            <p class="creation-modal-kicker">Crear</p>
+            <h2 :id="`modal-title-${activeModal}`" class="creation-modal-title">{{ modalTitle }}</h2>
+          </div>
+          <button class="modal-close-btn" type="button" :disabled="isSaving" @click="closeCreationModal">×</button>
+        </div>
+
+        <form class="creation-modal-form" @submit.prevent="submitActiveModal">
+          <template v-if="isItemModal">
+            <label class="field-label" for="item-title">Título</label>
+            <input
+              id="item-title"
+              ref="titleInput"
+              v-model="newItem.title"
+              type="text"
+              class="text-input"
+              placeholder="Título del item..."
+              :disabled="isBusy"
+            />
+          </template>
+
+          <template v-else-if="activeModal === 'release'">
+            <label class="field-label" for="release-name">Número</label>
+            <input
+              id="release-name"
+              ref="releaseNameInput"
+              v-model="newRelease.name"
+              type="text"
+              class="text-input"
+              :class="{ error: isDuplicateRelease }"
+              placeholder="Número de release. Ej: 3.2.1"
+              :disabled="isBusy"
+            />
+            <div v-if="isDuplicateRelease" class="error-message">⚠️ Ya existe un release con este nombre</div>
+          </template>
+
+          <template v-else-if="activeModal === 'environment'">
+            <label class="field-label" for="environment-name">Nombre</label>
+            <input
+              id="environment-name"
+              ref="environmentNameInput"
+              v-model="newEnvironment.name"
+              type="text"
+              class="text-input"
+              :class="{ error: isDuplicateEnvironment }"
+              placeholder="Nombre del ambiente..."
+              :disabled="isBusy"
+            />
+            <div v-if="isDuplicateEnvironment" class="error-message">⚠️ Ya existe un ambiente con este nombre</div>
+          </template>
+
+          <div class="modal-actions">
+            <button type="button" class="secondary-btn" :disabled="isSaving" @click="closeCreationModal">Cancelar</button>
+            <button type="submit" class="primary-btn" :disabled="isModalSubmitDisabled">{{ modalSubmitLabel }}</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -367,7 +326,11 @@ const {
   availableReleases,
   availableStandaloneItems,
   sortedEnvironments,
+  poolEnvironment,
   formatDate,
+  isPoolEnvironment,
+  isProductionEnvironment,
+  isFixedEnvironment,
   getAvailableItemsForRelease,
   getDeploymentsByEnvironment,
   getReleaseById,
@@ -387,28 +350,39 @@ const {
 } = useFlowTrackDomain()
 
 const dragData = ref(null)
+const draggedEnvironmentId = ref('')
+const dragOverEnvironmentId = ref('')
+const activeReleaseDropZone = ref({ type: '', id: '' })
+const activeModal = ref('')
 
-const showNewItemForm = ref(false)
 const newItem = ref({
   title: '',
   type: 'feature'
 })
-const titleInput = ref(null)
 
-const showNewReleaseForm = ref(false)
 const newRelease = ref({
   name: ''
 })
-const releaseNameInput = ref(null)
 
-const showNewEnvironmentForm = ref(false)
 const newEnvironment = ref({
   name: ''
 })
+
+const titleInput = ref(null)
+const releaseNameInput = ref(null)
 const environmentNameInput = ref(null)
-const draggedEnvironmentId = ref('')
-const dragOverEnvironmentId = ref('')
-const activeReleaseDropZone = ref({ type: '', id: '' })
+
+const creationActions = [
+  { kind: 'release', label: 'Nuevo release', icon: '/new-release.png' },
+  { kind: 'feature', label: 'Nuevo feature', icon: '/new-feature.png' },
+  { kind: 'environment', label: 'Nuevo ambiente', icon: '/environment.png' },
+  { kind: 'hotfix', label: 'Nuevo hotfix', icon: '/hotfix.png' }
+]
+
+const itemAreas = ['front', 'back', 'app']
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' })
+
+const boardEnvironments = computed(() => sortedEnvironments.value)
 
 const isDuplicateRelease = computed(() => {
   return hasDuplicateReleaseName(newRelease.value.name)
@@ -422,9 +396,65 @@ const isBusy = computed(() => {
   return isInitializing.value || isSaving.value
 })
 
-const itemAreas = ['front', 'back', 'app']
-const mockDescription = 'Lorem ipsum dolor sit amet, libre unst consectetur adipisicing elit.'
-const relativeTimeFormatter = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' })
+const isItemModal = computed(() => {
+  return activeModal.value === 'feature' || activeModal.value === 'hotfix'
+})
+
+const modalTitle = computed(() => {
+  if (activeModal.value === 'feature') {
+    return 'Nuevo feature'
+  }
+
+  if (activeModal.value === 'hotfix') {
+    return 'Nuevo hotfix'
+  }
+
+  if (activeModal.value === 'release') {
+    return 'Nuevo release'
+  }
+
+  if (activeModal.value === 'environment') {
+    return 'Nuevo ambiente'
+  }
+
+  return ''
+})
+
+const modalSubmitLabel = computed(() => {
+  if (activeModal.value === 'environment') {
+    return 'Crear ambiente'
+  }
+
+  if (activeModal.value === 'release') {
+    return 'Crear release'
+  }
+
+  if (activeModal.value === 'hotfix') {
+    return 'Crear hotfix'
+  }
+
+  return 'Crear feature'
+})
+
+const isModalSubmitDisabled = computed(() => {
+  if (isBusy.value) {
+    return true
+  }
+
+  if (activeModal.value === 'release') {
+    return !newRelease.value.name.trim() || isDuplicateRelease.value
+  }
+
+  if (activeModal.value === 'environment') {
+    return !newEnvironment.value.name.trim() || isDuplicateEnvironment.value
+  }
+
+  if (isItemModal.value) {
+    return !newItem.value.title.trim()
+  }
+
+  return true
+})
 
 const lastSavedLabel = computed(() => {
   if (!lastSavedAt.value) {
@@ -434,13 +464,93 @@ const lastSavedLabel = computed(() => {
   return `Último guardado ${formatDate(lastSavedAt.value)}`
 })
 
+const poolReleases = computed(() => {
+  const releasesById = new Map()
+  const poolId = poolEnvironment.value?.id
+
+  if (poolId) {
+    getDeploymentsByEnvironment(poolId)
+      .filter(deployment => deployment.type === 'release')
+      .forEach(deployment => {
+        const release = getReleaseById(deployment.itemId)
+        if (release) {
+          releasesById.set(release.id, release)
+        }
+      })
+  }
+
+  availableReleases.value.forEach(release => {
+    if (!releasesById.has(release.id)) {
+      releasesById.set(release.id, release)
+    }
+  })
+
+  return Array.from(releasesById.values())
+})
+
+const poolItems = computed(() => {
+  const itemsById = new Map()
+  const poolId = poolEnvironment.value?.id
+
+  if (poolId) {
+    getDeploymentsByEnvironment(poolId)
+      .filter(deployment => deployment.type === 'item')
+      .forEach(deployment => {
+        const item = getItemById(deployment.itemId)
+        if (item) {
+          itemsById.set(item.id, item)
+        }
+      })
+  }
+
+  availableStandaloneItems.value.forEach(item => {
+    if (!itemsById.has(item.id)) {
+      itemsById.set(item.id, item)
+    }
+  })
+
+  return Array.from(itemsById.values())
+})
+
 watch(lastSavedLabel, label => {
   window.dispatchEvent(new CustomEvent('flowtrack:last-saved-label', { detail: label }))
 }, { immediate: true })
 
-const getItemDescription = item => {
-  const description = item?.description?.trim()
-  return description || mockDescription
+watch(activeModal, async modalKind => {
+  if (!modalKind) {
+    return
+  }
+
+  if (modalKind === 'feature' || modalKind === 'hotfix') {
+    await focusInput(titleInput)
+    return
+  }
+
+  if (modalKind === 'release') {
+    await focusInput(releaseNameInput)
+    return
+  }
+
+  if (modalKind === 'environment') {
+    await focusInput(environmentNameInput)
+  }
+})
+
+const getItemCreatedAt = item => {
+  const rawId = item?.id?.split('-')?.at(-1)
+  const timestamp = Number(rawId)
+
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return null
+  }
+
+  const date = new Date(timestamp)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const getItemMetaLabel = (item, dateValue = null) => {
+  const timestamp = dateValue || getItemCreatedAt(item)
+  return formatRelativeTime(timestamp)
 }
 
 const isAreaSelected = (item, area) => {
@@ -545,109 +655,85 @@ const resetNewEnvironmentForm = () => {
   }
 }
 
-const toggleNewItemForm = async () => {
-  if (!showNewItemForm.value && !ensureInteractive()) {
-    return
-  }
-
-  showNewItemForm.value = !showNewItemForm.value
-
-  if (showNewItemForm.value) {
-    await focusInput(titleInput)
-    return
-  }
-
+const resetModalForms = () => {
   resetNewItemForm()
-}
-
-const toggleNewReleaseForm = async () => {
-  if (!showNewReleaseForm.value && !ensureInteractive()) {
-    return
-  }
-
-  showNewReleaseForm.value = !showNewReleaseForm.value
-
-  if (showNewReleaseForm.value) {
-    await focusInput(releaseNameInput)
-    return
-  }
-
   resetNewReleaseForm()
-}
-
-const toggleNewEnvironmentForm = async () => {
-  if (!showNewEnvironmentForm.value && !ensureInteractive()) {
-    return
-  }
-
-  showNewEnvironmentForm.value = !showNewEnvironmentForm.value
-
-  if (showNewEnvironmentForm.value) {
-    await focusInput(environmentNameInput)
-    return
-  }
-
   resetNewEnvironmentForm()
 }
 
-const createNewItem = async () => {
+const openCreationModal = modalKind => {
   if (!ensureInteractive()) {
     return
   }
 
-  const result = await createDomainItem(newItem.value)
-  if (!result.ok) {
-    console.warn(result.reason)
+  if (modalKind === 'feature' || modalKind === 'hotfix') {
+    newItem.value.type = modalKind
+  }
+
+  activeModal.value = modalKind
+}
+
+const closeCreationModal = () => {
+  if (isSaving.value) {
     return
   }
 
-  resetNewItemForm()
-  showNewItemForm.value = false
+  activeModal.value = ''
+  resetModalForms()
 }
 
-const cancelNewItem = () => {
-  resetNewItemForm()
-  showNewItemForm.value = false
+const handleBackdropClick = () => {
+  closeCreationModal()
 }
 
-const createNewRelease = async () => {
+const submitActiveModal = async () => {
   if (!ensureInteractive()) {
     return
   }
 
-  const result = await createDomainRelease(newRelease.value.name)
-  if (!result.ok) {
-    console.warn(result.reason)
+  if (activeModal.value === 'release') {
+    const result = await createDomainRelease(newRelease.value.name)
+    if (!result.ok) {
+      console.warn(result.reason)
+      return
+    }
+
+    closeCreationModal()
     return
   }
 
-  resetNewReleaseForm()
-  showNewReleaseForm.value = false
-}
+  if (activeModal.value === 'environment') {
+    const result = await createDomainEnvironment(newEnvironment.value.name)
+    if (!result.ok) {
+      console.warn(result.reason)
+      return
+    }
 
-const cancelNewRelease = () => {
-  resetNewReleaseForm()
-  showNewReleaseForm.value = false
-}
-
-const createNewEnvironment = async () => {
-  if (!ensureInteractive()) {
+    closeCreationModal()
     return
   }
 
-  const result = await createDomainEnvironment(newEnvironment.value.name)
-  if (!result.ok) {
-    console.warn(result.reason)
-    return
-  }
+  if (activeModal.value === 'feature' || activeModal.value === 'hotfix') {
+    const result = await createDomainItem(newItem.value)
+    if (!result.ok) {
+      console.warn(result.reason)
+      return
+    }
 
-  resetNewEnvironmentForm()
-  showNewEnvironmentForm.value = false
+    closeCreationModal()
+  }
 }
 
-const cancelNewEnvironment = () => {
-  resetNewEnvironmentForm()
-  showNewEnvironmentForm.value = false
+const canReorderEnvironment = environment => {
+  return !isBusy.value && !isFixedEnvironment(environment)
+}
+
+const getReleaseDeployments = environmentId => {
+  return getDeploymentsByEnvironment(environmentId).filter(deployment => deployment.type === 'release')
+}
+
+const getItemDeployments = environmentId => {
+  return getDeploymentsByEnvironment(environmentId).filter(deployment => deployment.type === 'item')
 }
 
 const clearDragState = () => {
@@ -703,6 +789,7 @@ const handleDropOnDeployedRelease = async (event, releaseId) => {
   const dropPayload = resolveDropPayload(event)
   if (!dropPayload) {
     console.warn('❌ No hay datos de drag disponibles')
+    clearDragState()
     return
   }
 
@@ -712,16 +799,13 @@ const handleDropOnDeployedRelease = async (event, releaseId) => {
     return
   }
 
-  const draggedItemId = dropPayload.id
-
-  const result = await addItemToActiveRelease(draggedItemId, releaseId)
+  const result = await addItemToActiveRelease(dropPayload.id, releaseId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
     return
   }
 
-  console.log(`✅ Item ${draggedItemId} agregado al release desplegado ${releaseId}`)
   clearDragState()
 }
 
@@ -737,6 +821,7 @@ const handleDropOnRelease = async (event, releaseId) => {
   const dropPayload = resolveDropPayload(event)
   if (!dropPayload) {
     console.warn('❌ No hay datos de drag disponibles')
+    clearDragState()
     return
   }
 
@@ -746,16 +831,13 @@ const handleDropOnRelease = async (event, releaseId) => {
     return
   }
 
-  const draggedItemId = dropPayload.id
-
-  const result = await addItemToRelease(draggedItemId, releaseId)
+  const result = await addItemToRelease(dropPayload.id, releaseId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
     return
   }
 
-  console.log(`✅ Item ${draggedItemId} agregado al release ${releaseId}`)
   clearDragState()
 }
 
@@ -781,11 +863,11 @@ const handleDragStart = event => {
   }
 
   element.style.opacity = '0.5'
-  console.log(`🚀 Iniciando drag: ${type} ${id}`, dragData.value)
 }
 
 const handleEnvironmentDragStart = (event, environmentId) => {
-  if (!ensureInteractive()) {
+  const environment = boardEnvironments.value.find(currentEnvironment => currentEnvironment.id === environmentId)
+  if (!environment || !canReorderEnvironment(environment) || !ensureInteractive()) {
     event.preventDefault()
     return
   }
@@ -802,6 +884,11 @@ const handleEnvironmentDragOver = (event, environmentId) => {
   event.preventDefault()
   event.stopPropagation()
 
+  const environment = boardEnvironments.value.find(currentEnvironment => currentEnvironment.id === environmentId)
+  if (!environment || !canReorderEnvironment(environment)) {
+    return
+  }
+
   if (!draggedEnvironmentId.value || draggedEnvironmentId.value === environmentId) {
     return
   }
@@ -812,6 +899,13 @@ const handleEnvironmentDragOver = (event, environmentId) => {
 const handleEnvironmentDrop = async (event, environmentId) => {
   event.preventDefault()
   event.stopPropagation()
+
+  const targetEnvironment = boardEnvironments.value.find(currentEnvironment => currentEnvironment.id === environmentId)
+  if (!targetEnvironment || !canReorderEnvironment(targetEnvironment)) {
+    draggedEnvironmentId.value = ''
+    dragOverEnvironmentId.value = ''
+    return
+  }
 
   if (!ensureInteractive()) {
     draggedEnvironmentId.value = ''
@@ -880,9 +974,7 @@ const handleDrop = async (event, environmentId) => {
     return
   }
 
-  const payload = { ...dropPayload }
-
-  const result = await deployArtifact(payload, environmentId)
+  const result = await deployArtifact({ ...dropPayload }, environmentId)
   if (!result.ok) {
     console.warn(result.reason)
     clearDragState()
@@ -903,6 +995,12 @@ const handleDocumentDragEnd = () => {
   clearDragState()
 }
 
+const handleDocumentKeydown = event => {
+  if (event.key === 'Escape' && activeModal.value) {
+    closeCreationModal()
+  }
+}
+
 onMounted(async () => {
   const result = await initialize()
   if (!result.ok) {
@@ -910,50 +1008,26 @@ onMounted(async () => {
   }
 
   document.addEventListener('dragend', handleDocumentDragEnd)
+  document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('dragend', handleDocumentDragEnd)
+  document.removeEventListener('keydown', handleDocumentKeydown)
 })
 </script>
 
 <style scoped>
-/* ==========================================
-   ESTILOS GENERALES
-   ========================================== */
-
 .deployment-dashboard {
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 24px;
-  background-color: #f8fafc;
+  background:
+    radial-gradient(circle at top left, rgba(22, 163, 74, 0.08), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   min-height: calc(100vh - 64px);
   width: 100%;
   box-sizing: border-box;
-}
-
-.dashboard-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  border-radius: 14px;
-  background: #e0f2fe;
-  color: #0f172a;
-  font-size: 0.9rem;
-}
-
-.dashboard-status-bar.has-error {
-  background: #fee2e2;
-}
-
-.status-meta {
-  color: #475569;
-}
-
-.status-error {
-  color: #b91c1c;
 }
 
 .dashboard-state-panel {
@@ -990,219 +1064,291 @@ onBeforeUnmount(() => {
   border: 1px solid #fecaca;
 }
 
-.dashboard-title {
-  text-align: center;
-  color: #1e293b;
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 30px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* ==========================================
-   LAYOUT PRINCIPAL
-   ========================================== */
-
 .dashboard-container {
   display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 24px;
-  height: calc(100vh - 150px);
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 20px;
+  min-height: calc(100vh - 150px);
   width: 100%;
 }
 
-.left-column, .right-column {
-  background: white;
-  border-radius: 20px;
-  padding: 28px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.left-column {
-  overflow-y: auto;
-}
-
-.right-column {
-  overflow: hidden;
-  width: 100%;
-  background: #f8fafc;
-}
-
-.section-title {
-  color: #0f172a;
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 24px;
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.left-column-header {
+.action-rail {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 18px;
+  padding: 22px 12px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
 }
 
-.left-column-header .section-title {
-  margin-bottom: 0;
-}
-
-.new-environment-link {
-  border: none;
+.action-rail-btn {
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 16px;
   background: transparent;
-  padding: 0;
-  color: #334155;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.new-environment-link:hover:not(:disabled) {
-  color: #0f172a;
+.action-rail-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(15, 23, 42, 0.06);
 }
 
-.new-environment-link:disabled {
-  color: #94a3b8;
+.action-rail-btn.active {
+  background: #4ade80;
+  box-shadow: 0 12px 28px rgba(74, 222, 128, 0.35);
+}
+
+.action-rail-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+.action-rail-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
-.section-header .section-title {
-  margin-bottom: 0;
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-/* ==========================================
-   COLUMNA IZQUIERDA - RELEASES E ITEMS
-   ========================================== */
-
-.releases-container {
-  margin-bottom: 30px;
-}
-
-.subsection-title {
-  color: #475569;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.release-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  margin-bottom: 16px;
+.board-shell {
+  min-width: 0;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
   overflow: hidden;
-  transition: all 0.2s ease;
-  box-shadow: none;
-  padding: 10px;
-  background: #ffffff;
 }
 
-.release-card:hover {
-  border-color: #cbd5e1;
+.kanban-board {
+  display: flex;
+  gap: 18px;
+  min-height: calc(100vh - 150px);
+  padding: 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
-.release-header {
-  background: white;
-  color: #1e293b;
-  padding: 0;
-  cursor: grab;
-  transition: all 0.2s ease;
-  border-bottom: none;
-}
-
-.release-header:active {
-  cursor: grabbing;
-}
-
-.release-header h3 {
-  margin: 0;
-  color: #334155;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.release-description {
-  margin: 0 0 8px 0;
-  font-size: 0.8rem;
-  color: #475569;
-}
-
-.item-count {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* Items dentro de releases */
-.items-container {
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
-}
-
-.available-release .items-container {
+.environment-column {
+  width: 300px;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.environment-column.is-pool {
+  background: linear-gradient(180deg, rgba(240, 253, 244, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-color: rgba(134, 239, 172, 0.9);
+}
+
+.environment-column.is-production {
+  border-color: rgba(148, 163, 184, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.32), 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.environment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: grab;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.environment-header.is-static {
+  cursor: default;
+}
+
+.environment-header.is-drag-source {
+  opacity: 0.65;
+}
+
+.environment-header.is-drag-over {
+  background: #eff6ff;
+  border-bottom-color: #93c5fd;
+}
+
+.environment-title-wrap {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.item-card {
+.environment-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.environment-chip {
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.deployments-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.empty-column-copy {
+  margin: 0;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 18px;
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.release-card,
+.deployed-release {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.release-card:hover,
+.deployed-release:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.release-card.drag-over,
+.deployed-release.drag-over {
+  border-width: 2px;
+  border-color: #475569;
+}
+
+.release-header {
+  cursor: grab;
+}
+
+.release-header h4,
+.deployment-header h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.release-description {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.items-container,
+.deployment-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.item-card,
+.deployed-item,
+.deployed-item-detail {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: #f8fafc;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 18px;
   padding: 14px 14px 12px;
-  margin-bottom: 12px;
-  cursor: grab;
-  transition: all 0.2s ease;
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.item-card:active {
-  cursor: grabbing;
+.item-card::before,
+.deployed-item::before,
+.deployed-item-detail::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  bottom: 6px;
+  width: 38%;
+  background-image: var(--item-watermark-icon);
+  background-repeat: no-repeat;
+  background-position: center right;
+  background-size: auto 94%;
+  opacity: 0.035;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.item-card:hover {
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+.item-card > *,
+.deployed-item > *,
+.deployed-item-detail > * {
+  position: relative;
+  z-index: 1;
+}
+
+.item-card:hover,
+.deployed-item:hover,
+.deployed-item-detail:hover {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
   transform: translateY(-2px);
 }
 
-.item-top-slot {
-  min-height: 24px;
+.item-card,
+.deployed-item {
+  cursor: grab;
+}
+
+.item-feature {
+  --item-watermark-icon: url('/new-feature.png');
+  border-color: rgba(147, 197, 253, 0.7);
+}
+
+.item-fix {
+  --item-watermark-icon: url('/new-feature.png');
+  border-color: rgba(134, 239, 172, 0.7);
+}
+
+.item-hotfix {
+  --item-watermark-icon: url('/hotfix.png');
+  border-color: rgba(252, 165, 165, 0.75);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+.item-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
-.item-top-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
-.item-hotfix-tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 0.72rem;
-  line-height: 1;
-  font-weight: 700;
-  text-transform: lowercase;
-  color: #ef4444;
-  background: #fee2e2;
+.item-header-row .item-title {
+  flex: 1;
+  margin: 0;
 }
 
 .item-detach-btn {
@@ -1230,130 +1376,21 @@ onBeforeUnmount(() => {
   display: block;
 }
 
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.item-info {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-/* Badge de tipo con icono */
-.item-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
+.item-title,
+.deployed-item-title {
   font-weight: 600;
-  text-transform: capitalize;
-}
-
-.badge-icon {
-  font-size: 0.85rem;
-}
-
-/* Feature Badge - Azul */
-.badge-feature {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1d4ed8;
-  border: 1px solid #93c5fd;
-}
-
-.badge-feature .badge-icon {
-  color: #2563eb;
-}
-
-/* Fix Badge - Verde */
-.badge-fix {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 1px solid #86efac;
-}
-
-.badge-fix .badge-icon {
-  color: #22c55e;
-}
-
-/* Hotfix Badge - Rojo */
-.badge-hotfix {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-}
-
-.badge-hotfix .badge-icon {
-  color: #ef4444;
-}
-
-/* Botones de acciones */
-.item-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid #e2e8f0;
-  background: transparent;
-  color: #94a3b8;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-  padding: 0;
-}
-
-.action-btn:hover {
-  background: #f1f5f9;
-  color: #475569;
-  border-color: #cbd5e1;
-}
-
-.info-btn:hover {
-  color: #3b82f6;
-  border-color: #93c5fd;
-  background: #eff6ff;
-}
-
-.edit-btn:hover {
-  color: #8b5cf6;
-  border-color: #c4b5fd;
-  background: #f5f3ff;
-}
-
-.item-title {
-  font-weight: 600;
-  color: #1e293b;
-  font-size: 1rem;
+  color: #0f172a;
+  font-size: 0.95rem;
   line-height: 1.4;
   margin: 0 0 8px;
   overflow-wrap: anywhere;
 }
 
-/* Ocultar item-type antiguo */
-.item-type {
-  display: none;
-}
-
 .item-description {
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   margin: 0 0 10px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .item-footer {
@@ -1365,6 +1402,7 @@ onBeforeUnmount(() => {
 
 .item-area-group {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1392,657 +1430,190 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 
-.item-env-time {
+.deployment-date {
   font-size: 0.78rem;
   color: #475569;
   white-space: nowrap;
 }
 
-.item-meta {
+.deployment-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.item-id {
-  color: #94a3b8;
-  font-weight: 500;
+.creation-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
 }
 
-/* Colores por tipo de item - Sin bordes laterales para estilo minimalista */
-.item-feature,
-.item-fix,
-.item-hotfix {
-  border-left: none;
+.creation-modal {
+  width: min(480px, 100%);
+  border-radius: 28px;
+  background: white;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+  padding: 24px;
 }
 
-/* Estilos para release header que acepta drops */
-.release-card.drag-over,
-.deployed-release.drag-over {
-  outline: 2px solid #94a3b8;
-  outline-offset: 0;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.2);
+.creation-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
-/* Colores por prioridad */
-.item-priority {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
+.creation-modal-kicker {
+  margin: 0 0 8px;
+  color: #16a34a;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.priority-low {
-  background: #d1fae5;
-  color: #065f46;
+.creation-modal-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
 }
 
-.priority-medium {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.priority-high {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-.priority-critical {
-  background: #fca5a5;
-  color: #7f1d1d;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* Items independientes */
-.standalone-items {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 20px;
-}
-
-.subsection-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.subsection-title {
+.modal-close-btn {
+  border: none;
+  background: #f1f5f9;
   color: #475569;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.add-item-btn {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  border: none;
-  background: #f1f5f9;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s ease;
   font-size: 1.3rem;
-  font-weight: 500;
+  line-height: 1;
 }
 
-.add-item-btn:hover {
-  background: #e2e8f0;
-  color: #334155;
-  transform: scale(1.05);
-}
-
-.add-item-btn.active {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.add-item-btn.active:hover {
-  background: #fecaca;
-  color: #b91c1c;
-}
-
-.add-icon {
-  display: inline-block;
-  transition: transform 0.2s ease;
-}
-
-.add-item-btn.active .add-icon {
-  transform: rotate(45deg);
-}
-
-/* Formulario de nuevo item */
-.new-item-form {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 16px;
-  animation: slideDown 0.3s ease;
-}
-
-/* Formulario de nuevo ambiente */
-.new-environment-form {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-  animation: slideDown 0.3s ease;
-}
-
-.environment-name-input {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 0.9rem;
-  margin-bottom: 12px;
-  transition: all 0.2s ease;
-  background: white;
-  box-sizing: border-box;
-}
-
-.environment-name-input:focus {
-  outline: none;
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
-}
-
-.environment-name-input::placeholder {
-  color: #94a3b8;
-  font-style: normal;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    max-height: 200px;
-  }
-}
-
-.item-title-input {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 0.9rem;
-  margin-bottom: 12px;
-  transition: all 0.2s ease;
-  background: white;
-  box-sizing: border-box;
-}
-
-.item-title-input:focus {
-  outline: none;
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
-}
-
-.item-title-input.error {
-  border-color: #fca5a5;
-  background: #fef2f2;
-}
-
-.item-title-input.error:focus {
-  border-color: #f87171;
-  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.1);
-}
-
-.item-title-input::placeholder {
-  color: #94a3b8;
-  font-style: normal;
-}
-
-.error-message {
-  color: #ef4444;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.form-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.item-type-select {
-  padding: 10px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: white;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex: 1;
-}
-
-.item-type-select:focus {
-  outline: none;
-  border-color: #94a3b8;
-}
-
-.form-buttons {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.save-btn,
-.cancel-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.save-btn {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #bbf7d0;
-  transform: scale(1.05);
-}
-
-.save-btn:disabled {
-  background: #f1f5f9;
-  color: #cbd5e1;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.cancel-btn {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.cancel-btn:hover {
-  background: #fecaca;
-  transform: scale(1.05);
-}
-
-/* ==========================================
-   COLUMNA DERECHA - TABLERO KANBAN
-   ========================================== */
-
-.kanban-board {
-  display: flex;
-  gap: 16px;
-  height: calc(100vh - 250px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Mejorar apariencia del scrollbar */
-.kanban-board::-webkit-scrollbar {
-  height: 8px;
-}
-
-.kanban-board::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-.kanban-board::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.kanban-board::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.environment-column {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-  overflow-y: auto;
-  min-height: 100%;
-  width: 280px;
-  flex-shrink: 0;
-  flex-grow: 0;
-}
-
-.environment-column:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.environment-header {
-  text-align: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
-  cursor: grab;
-  border-radius: 10px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.environment-header:active {
-  cursor: grabbing;
-}
-
-.environment-header.is-drag-source {
-  opacity: 0.65;
-}
-
-.environment-header.is-drag-over {
-  background: #eff6ff;
-  border-bottom-color: #93c5fd;
-}
-
-.environment-title {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-}
-
-.environment-header h3 {
-  margin: 0;
-  color: #1e293b;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.4;
-  flex: 1;
-  text-align: left;
-}
-
-.deployment-count {
-  color: #64748b;
-  font-size: 0.8rem;
-  background: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-}
-
-/* Despliegues */
-.deployments-container {
+.creation-modal-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.deployed-release, .deployed-item {
-  background: #f8fafc;
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  box-shadow: none;
-  cursor: grab;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.deployed-release:active, .deployed-item:active {
-  cursor: grabbing;
-}
-
-.deployed-release:hover, .deployed-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-}
-
-.deployed-release {
-  background: #ffffff;
-  padding: 10px;
-  border-radius: 12px;
-  box-shadow: none;
-  border: 1px solid #e5e7eb;
-}
-
-.deployed-item.item-feature,
-.deployed-item.item-fix,
-.deployed-item.item-hotfix {
-  border-left: none;
-}
-
-.deployed-item-title {
-  font-weight: 600;
-  color: #1e293b;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin: 12px 0 8px 0;
-}
-
-.deployment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.deployment-header h4 {
-  margin: 0;
+.field-label {
   color: #334155;
-  font-size: 0.84rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
-.deployment-date {
-  color: #64748b;
-  font-size: 0.72rem;
-}
-
-.deployment-description {
-  color: #64748b;
-  font-size: 0.8rem;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-}
-
-.deployment-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.deployed-item-detail {
-  display: block;
-  padding: 14px;
-  background: #f8fafc;
-  border-radius: 18px;
-  margin-bottom: 0;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
-}
-
-.deployed-item-detail .item-type-badge {
-  padding: 4px 10px;
-  font-size: 0.7rem;
-}
-
-.deployed-item-detail .item-title {
-  font-weight: 600;
-  color: #1e293b;
+.text-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 14px 16px;
   font-size: 1rem;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
-.item-actions-small {
+.text-input:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14);
+}
+
+.text-input.error {
+  border-color: #ef4444;
+}
+
+.error-message {
+  color: #b91c1c;
+  font-size: 0.84rem;
+}
+
+.modal-actions {
   display: flex;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
 }
 
-.action-btn-small {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.primary-btn,
+.secondary-btn {
   border: none;
-  background: #f1f5f9;
-  color: #94a3b8;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-weight: 700;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 0.7rem;
-  padding: 0;
 }
 
-.action-btn-small:hover {
-  background: #e2e8f0;
-  color: #475569;
-}
-
-.deployed-item-tag {
-  background: #e2e8f0;
-  color: #475569;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-.deployed-item-tag.item-feature {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.deployed-item-tag.item-fix {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.deployed-item-tag.item-hotfix {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-/* ==========================================
-   EFECTOS DRAG AND DROP
-   ========================================== */
-
-.draggable-item {
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.draggable-item:hover {
-  transform: translateX(2px);
-}
-
-.draggable-item[draggable="true"]:hover::after {
-  content: "📌 Arrastra para desplegar";
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #0f172a;
+.primary-btn {
+  background: #16a34a;
   color: white;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.75rem;
+}
+
+.secondary-btn {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.modal-close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  z-index: 1000;
-  font-weight: 500;
+  border: 0;
 }
 
-/* Estados durante drag */
-.environment-column.drag-over {
-  background: #f0fdf4;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
-}
-
-/* ==========================================
-   RESPONSIVE DESIGN
-   ========================================== */
-
-@media (max-width: 1024px) {
+@media (max-width: 920px) {
   .dashboard-container {
     grid-template-columns: 1fr;
-    gap: 20px;
   }
-  
-  .kanban-board {
-    display: flex;
-    overflow-x: auto;
-    height: auto;
-    width: 100%;
-  }
-  
-  .environment-column {
-    min-height: 400px;
-    width: 280px;
-    flex-shrink: 0;
+
+  .action-rail {
+    flex-direction: row;
+    justify-content: center;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .deployment-dashboard {
     padding: 16px;
   }
-  
-  .dashboard-title {
-    font-size: 1.5rem;
-  }
-  
+
   .kanban-board {
-    display: flex;
-    overflow-x: auto;
-    height: auto;
-    width: 100%;
-  }
-  
-  .environment-column {
-    min-height: 400px;
-    width: 250px;
-    flex-shrink: 0;
-    overflow-y: auto;
-  }
-  
-  .left-column, .right-column {
     padding: 16px;
   }
-}
 
-/* ==========================================
-   UTILIDADES
-   ========================================== */
+  .environment-column {
+    width: 280px;
+    min-width: 280px;
+  }
 
-.text-truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .creation-modal-backdrop {
+    padding: 16px;
+  }
 
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
+  .creation-modal {
+    padding: 20px;
+  }
 }
 </style>
