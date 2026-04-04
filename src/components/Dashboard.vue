@@ -25,16 +25,130 @@
           <img :src="action.icon" :alt="action.label" class="action-rail-icon" />
           <span class="sr-only">{{ action.label }}</span>
         </button>
+
+        <button
+          class="action-rail-btn action-rail-toggle"
+          :class="{ active: showPoolTray }"
+          :aria-pressed="showPoolTray"
+          :disabled="isBusy"
+          :title="showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool'"
+          @click="togglePoolTray"
+        >
+          <img src="/new.png" alt="Alternar Pool" class="action-rail-icon" />
+          <span class="sr-only">{{ showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool' }}</span>
+        </button>
       </aside>
 
       <section class="board-shell">
-        <div class="kanban-board">
+        <transition name="pool-tray-visibility">
+          <div
+            v-show="showPoolTray && poolEnvironment"
+            class="pool-tray"
+            @dragover.prevent
+            @dragenter.prevent
+            @drop="handleDrop($event, poolEnvironment.id)"
+          >
+            <div class="pool-tray-header">
+              <div>
+                <h2 class="pool-tray-title">Pool</h2>
+                <p class="pool-tray-copy">Todo lo nuevo aparece acá y desde acá se distribuye al resto de ambientes.</p>
+              </div>
+            </div>
+
+            <div class="pool-tray-body" :class="{ 'has-two-groups': poolReleases.length > 0 && poolItems.length > 0 }">
+              <div class="pool-section">
+                <div v-if="poolReleases.length > 0" class="pool-release-grid">
+                  <div
+                    v-for="release in poolReleases"
+                    :key="release.id"
+                    class="release-card available-release pool-release-card"
+                    :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
+                    @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
+                    @drop="handleDropOnRelease($event, release.id)"
+                  >
+                    <div
+                      class="release-header draggable-item"
+                      :data-type="'release'"
+                      :data-id="release.id"
+                      :draggable="!isBusy"
+                      @dragstart="handleDragStart"
+                    >
+                      <h4>{{ release.name }}</h4>
+                    </div>
+
+                    <div v-if="getAvailableItemsForRelease(release).length > 0" class="items-container pool-release-items">
+                      <div
+                        v-for="item in getAvailableItemsForRelease(release)"
+                        :key="item.id"
+                        class="item-card draggable-item pool-item-card"
+                        :class="`item-${item.type}`"
+                        :data-type="'item'"
+                        :data-id="item.id"
+                        :data-release-id="release.id"
+                        :draggable="!isBusy"
+                        @dragstart="handleDragStart"
+                      >
+                        <div class="item-header-row compact-item-header-row">
+                          <p class="item-title">{{ item.title }}</p>
+                          <button
+                            class="item-detach-btn"
+                            title="Desenganchar del release"
+                            @click.stop="handleDetachItem(item.id, release.id)"
+                          >
+                            <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
+                          </button>
+                        </div>
+                        <p class="item-description">{{ getItemMetaLabel(item) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-else class="empty-inline-copy">Sin releases.</p>
+              </div>
+
+              <div class="pool-section pool-items-section">
+                <div v-if="poolItems.length > 0" class="pool-item-grid">
+                  <div
+                    v-for="item in poolItems"
+                    :key="item.id"
+                    class="item-card draggable-item pool-item-card"
+                    :class="`item-${item.type}`"
+                    :data-type="'item'"
+                    :data-id="item.id"
+                    :draggable="!isBusy"
+                    @dragstart="handleDragStart"
+                  >
+                    <p class="item-title">{{ item.title }}</p>
+                    <p class="item-description">{{ getItemMetaLabel(item) }}</p>
+                    <div class="item-footer compact-item-footer">
+                      <div class="item-area-group">
+                        <button
+                          v-for="area in itemAreas"
+                          :key="`${item.id}-${area}`"
+                          class="item-area-tag"
+                          :class="{ active: isAreaSelected(item, area) }"
+                          @click.stop="handleToggleItemArea(item.id, area)"
+                        >
+                          {{ area }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-else class="empty-inline-copy">Sin items.</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <div class="environment-grid">
           <div
             v-for="environment in boardEnvironments"
             :key="environment.id"
-            class="environment-column"
+            class="environment-column environment-panel"
             :class="{
-              'is-pool': isPoolEnvironment(environment),
               'is-production': isProductionEnvironment(environment),
               'is-fixed': isFixedEnvironment(environment)
             }"
@@ -57,190 +171,95 @@
             >
               <div class="environment-title-wrap">
                 <h3 class="environment-title">{{ environment.name }}</h3>
-                <span v-if="isPoolEnvironment(environment)" class="environment-chip">origen</span>
               </div>
             </div>
 
-            <div class="deployments-container">
-              <template v-if="isPoolEnvironment(environment)">
-                <div
-                  v-for="release in poolReleases"
-                  :key="release.id"
-                  class="release-card available-release"
-                  :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
-                  @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
-                  @drop="handleDropOnRelease($event, release.id)"
-                >
+            <div class="deployments-container environment-panel-content">
+              <div
+                v-for="deployment in getReleaseDeployments(environment.id)"
+                :key="`release-${deployment.itemId}`"
+                class="deployed-release draggable-item environment-release-card"
+                :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
+                :data-type="'release'"
+                :data-id="deployment.itemId"
+                :draggable="!isBusy"
+                @dragstart="handleDragStart"
+                @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
+                @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
+              >
+                <div class="deployment-header">
+                  <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                  <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
+                </div>
+
+                <div class="deployment-items environment-release-items">
                   <div
-                    class="release-header draggable-item"
-                    :data-type="'release'"
-                    :data-id="release.id"
-                    :draggable="!isBusy"
-                    @dragstart="handleDragStart"
+                    v-for="item in getDeployedReleaseItems(deployment)"
+                    :key="item.id"
+                    class="deployed-item-detail compact-deployed-item"
+                    :class="`item-${item.type}`"
                   >
-                    <h4>{{ release.name }}</h4>
-                    <p v-if="release.description" class="release-description">{{ release.description }}</p>
-                  </div>
-
-                  <div v-if="getAvailableItemsForRelease(release).length > 0" class="items-container">
-                    <div
-                      v-for="item in getAvailableItemsForRelease(release)"
-                      :key="item.id"
-                      class="item-card draggable-item"
-                      :class="`item-${item.type}`"
-                      :data-type="'item'"
-                      :data-id="item.id"
-                      :data-release-id="release.id"
-                      :draggable="!isBusy"
-                      @dragstart="handleDragStart"
-                    >
-                      <div class="item-header-row">
-                        <p class="item-title">{{ item.title }}</p>
-                        <button
-                          class="item-detach-btn"
-                          title="Desenganchar del release"
-                          @click.stop="handleDetachItem(item.id, release.id)"
-                        >
-                          <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
-                        </button>
-                      </div>
-                      <p class="item-description">{{ getItemMetaLabel(item) }}</p>
-                      <div class="item-footer">
-                        <div class="item-area-group">
-                          <button
-                            v-for="area in itemAreas"
-                            :key="`${item.id}-${area}`"
-                            class="item-area-tag"
-                            :class="{ active: isAreaSelected(item, area) }"
-                            @click.stop="handleToggleItemArea(item.id, area)"
-                          >
-                            {{ area }}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  v-for="item in poolItems"
-                  :key="item.id"
-                  class="item-card draggable-item"
-                  :class="`item-${item.type}`"
-                  :data-type="'item'"
-                  :data-id="item.id"
-                  :draggable="!isBusy"
-                  @dragstart="handleDragStart"
-                >
-                  <p class="item-title">{{ item.title }}</p>
-                  <p class="item-description">{{ getItemMetaLabel(item) }}</p>
-                  <div class="item-footer">
-                    <div class="item-area-group">
+                    <div class="item-header-row compact-item-header-row">
+                      <span class="item-title">{{ item.title }}</span>
                       <button
-                        v-for="area in itemAreas"
-                        :key="`${item.id}-${area}`"
-                        class="item-area-tag"
-                        :class="{ active: isAreaSelected(item, area) }"
-                        @click.stop="handleToggleItemArea(item.id, area)"
+                        class="item-detach-btn"
+                        title="Desenganchar del release"
+                        @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
                       >
-                        {{ area }}
+                        <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                <p v-if="poolReleases.length === 0 && poolItems.length === 0" class="empty-column-copy">
-                  Todo lo nuevo aparece acá.
-                </p>
-              </template>
-
-              <template v-else>
-                <div
-                  v-for="deployment in getReleaseDeployments(environment.id)"
-                  :key="`release-${deployment.itemId}`"
-                  class="deployed-release draggable-item"
-                  :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
-                  :data-type="'release'"
-                  :data-id="deployment.itemId"
-                  :draggable="!isBusy"
-                  @dragstart="handleDragStart"
-                  @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
-                  @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
-                >
-                  <div class="deployment-header">
-                    <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
-                    <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
-                  </div>
-
-                  <div class="deployment-items">
-                    <div
-                      v-for="item in getDeployedReleaseItems(deployment)"
-                      :key="item.id"
-                      class="deployed-item-detail"
-                      :class="`item-${item.type}`"
-                    >
-                      <div class="item-header-row">
-                        <span class="item-title">{{ item.title }}</span>
+                    <p class="item-description">{{ getItemMetaLabel(item, getDeploymentItemTime(deployment, item.id)) }}</p>
+                    <div class="item-footer compact-item-footer">
+                      <div class="item-area-group">
                         <button
-                          class="item-detach-btn"
-                          title="Desenganchar del release"
-                          @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
+                          v-for="area in itemAreas"
+                          :key="`${item.id}-${area}`"
+                          class="item-area-tag"
+                          :class="{ active: isAreaSelected(item, area) }"
+                          @click.stop="handleToggleItemArea(item.id, area)"
                         >
-                          <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
+                          {{ area }}
                         </button>
                       </div>
-                      <p class="item-description">{{ getItemMetaLabel(item, getDeploymentItemTime(deployment, item.id)) }}</p>
-                      <div class="item-footer">
-                        <div class="item-area-group">
-                          <button
-                            v-for="area in itemAreas"
-                            :key="`${item.id}-${area}`"
-                            class="item-area-tag"
-                            :class="{ active: isAreaSelected(item, area) }"
-                            @click.stop="handleToggleItemArea(item.id, area)"
-                          >
-                            {{ area }}
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div
-                  v-for="deployment in getItemDeployments(environment.id)"
-                  :key="`item-${deployment.itemId}`"
-                  class="deployed-item draggable-item"
-                  :class="`item-${getItemById(deployment.itemId)?.type}`"
-                  :data-type="'item'"
-                  :data-id="deployment.itemId"
-                  :draggable="!isBusy"
-                  @dragstart="handleDragStart"
-                >
-                  <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
-                  <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
-                  <div class="item-footer">
-                    <div class="item-area-group">
-                      <button
-                        v-for="area in itemAreas"
-                        :key="`${deployment.itemId}-${area}`"
-                        class="item-area-tag"
-                        :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
-                        @click.stop="handleToggleItemArea(deployment.itemId, area)"
-                      >
-                        {{ area }}
-                      </button>
-                    </div>
+              <div
+                v-for="deployment in getItemDeployments(environment.id)"
+                :key="`item-${deployment.itemId}`"
+                class="deployed-item draggable-item compact-deployed-item"
+                :class="`item-${getItemById(deployment.itemId)?.type}`"
+                :data-type="'item'"
+                :data-id="deployment.itemId"
+                :draggable="!isBusy"
+                @dragstart="handleDragStart"
+              >
+                <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
+                <div class="item-footer compact-item-footer">
+                  <div class="item-area-group">
+                    <button
+                      v-for="area in itemAreas"
+                      :key="`${deployment.itemId}-${area}`"
+                      class="item-area-tag"
+                      :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
+                      @click.stop="handleToggleItemArea(deployment.itemId, area)"
+                    >
+                      {{ area }}
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                <p
-                  v-if="getReleaseDeployments(environment.id).length === 0 && getItemDeployments(environment.id).length === 0"
-                  class="empty-column-copy"
-                >
-                  Sin despliegues todavía.
-                </p>
-              </template>
+              <p
+                v-if="getReleaseDeployments(environment.id).length === 0 && getItemDeployments(environment.id).length === 0"
+                class="empty-column-copy"
+              >
+                Sin despliegues todavía.
+              </p>
             </div>
           </div>
         </div>
@@ -354,6 +373,7 @@ const draggedEnvironmentId = ref('')
 const dragOverEnvironmentId = ref('')
 const activeReleaseDropZone = ref({ type: '', id: '' })
 const activeModal = ref('')
+const showPoolTray = ref(true)
 
 const newItem = ref({
   title: '',
@@ -382,7 +402,9 @@ const creationActions = [
 const itemAreas = ['front', 'back', 'app']
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' })
 
-const boardEnvironments = computed(() => sortedEnvironments.value)
+const boardEnvironments = computed(() => {
+  return sortedEnvironments.value.filter(environment => !isPoolEnvironment(environment))
+})
 
 const isDuplicateRelease = computed(() => {
   return hasDuplicateReleaseName(newRelease.value.name)
@@ -680,6 +702,14 @@ const closeCreationModal = () => {
 
   activeModal.value = ''
   resetModalForms()
+}
+
+const togglePoolTray = () => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  showPoolTray.value = !showPoolTray.value
 }
 
 const handleBackdropClick = () => {
@@ -1112,6 +1142,41 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+.action-rail-toggle {
+  margin-top: 4px;
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.action-rail-toggle::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: rgba(148, 163, 184, 0.34);
+}
+
+.action-rail-toggle .action-rail-icon {
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.action-rail-toggle:not(.active) {
+  opacity: 0.82;
+}
+
+.action-rail-toggle.active {
+  background: #0f172a;
+  border-color: rgba(15, 23, 42, 0.6);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+}
+
+.action-rail-toggle.active .action-rail-icon {
+  transform: rotate(45deg);
+}
+
 .action-rail-icon {
   width: 24px;
   height: 24px;
@@ -1123,21 +1188,13 @@ onBeforeUnmount(() => {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.66);
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-  overflow: hidden;
-}
-
-.kanban-board {
-  display: flex;
-  gap: 18px;
-  min-height: calc(100vh - 150px);
   padding: 22px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .environment-column {
-  width: 300px;
-  min-width: 300px;
   display: flex;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.92);
@@ -1146,9 +1203,125 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
-.environment-column.is-pool {
-  background: linear-gradient(180deg, rgba(240, 253, 244, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
-  border-color: rgba(134, 239, 172, 0.9);
+.pool-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 18px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(240, 253, 244, 0.82) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border: 1px solid rgba(187, 247, 208, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.pool-tray-visibility-enter-active,
+.pool-tray-visibility-leave-active {
+  overflow: hidden;
+  transition: opacity 0.24s ease, transform 0.24s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+  transform-origin: top center;
+}
+
+.pool-tray-visibility-enter-to,
+.pool-tray-visibility-leave-from {
+  max-height: 540px;
+}
+
+.pool-tray-visibility-enter-from,
+.pool-tray-visibility-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scaleY(0.985);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pool-tray-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.pool-tray-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pool-tray-copy {
+  margin: 0;
+  color: #475569;
+  font-size: 0.8rem;
+  max-width: 620px;
+}
+
+.pool-tray-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  gap: 16px;
+}
+
+.pool-tray-body.has-two-groups .pool-items-section {
+  padding-left: 16px;
+  border-left: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.pool-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pool-release-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.pool-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.pool-release-card {
+  padding: 10px;
+  min-height: 132px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.pool-release-items {
+  gap: 8px;
+}
+
+.pool-item-card {
+  min-height: 98px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.empty-inline-copy {
+  margin: 0;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  padding: 12px;
+  color: #64748b;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.environment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.environment-panel {
+  min-width: 0;
+  min-height: 320px;
 }
 
 .environment-column.is-production {
@@ -1210,7 +1383,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 14px;
   padding: 18px;
-  overflow-y: auto;
+}
+
+.environment-panel-content {
+  min-height: 250px;
 }
 
 .empty-column-copy {
@@ -1253,8 +1429,8 @@ onBeforeUnmount(() => {
 .deployment-header h4 {
   margin: 0;
   color: #0f172a;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .release-description {
@@ -1267,8 +1443,8 @@ onBeforeUnmount(() => {
 .deployment-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .item-card,
@@ -1280,7 +1456,7 @@ onBeforeUnmount(() => {
   background: #f8fafc;
   border: 1px solid transparent;
   border-radius: 18px;
-  padding: 14px 14px 12px;
+  padding: 12px;
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -1293,7 +1469,7 @@ onBeforeUnmount(() => {
   top: 6px;
   right: 10px;
   bottom: 6px;
-  width: 38%;
+  width: 34%;
   background-image: var(--item-watermark-icon);
   background-repeat: no-repeat;
   background-position: center right;
@@ -1346,6 +1522,10 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
 }
 
+.compact-item-header-row {
+  margin-bottom: 6px;
+}
+
 .item-header-row .item-title {
   flex: 1;
   margin: 0;
@@ -1380,7 +1560,7 @@ onBeforeUnmount(() => {
 .deployed-item-title {
   font-weight: 600;
   color: #0f172a;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.4;
   margin: 0 0 8px;
   overflow-wrap: anywhere;
@@ -1388,8 +1568,8 @@ onBeforeUnmount(() => {
 
 .item-description {
   color: #64748b;
-  font-size: 0.82rem;
-  margin: 0 0 10px;
+  font-size: 0.78rem;
+  margin: 0 0 8px;
   line-height: 1.45;
 }
 
@@ -1398,6 +1578,10 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.compact-item-footer {
+  gap: 8px;
 }
 
 .item-area-group {
@@ -1411,9 +1595,9 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: #e2e8f0;
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 3px 7px;
   text-transform: lowercase;
   opacity: 0.55;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1441,7 +1625,15 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.environment-release-card {
+  min-height: 132px;
+}
+
+.compact-deployed-item {
+  min-height: 96px;
 }
 
 .creation-modal-backdrop {
@@ -1583,6 +1775,23 @@ onBeforeUnmount(() => {
   border: 0;
 }
 
+@media (max-width: 1350px) {
+  .pool-tray-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pool-tray-body.has-two-groups .pool-items-section {
+    padding-left: 0;
+    padding-top: 14px;
+    border-left: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+  }
+
+  .environment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 920px) {
   .dashboard-container {
     grid-template-columns: 1fr;
@@ -1592,20 +1801,15 @@ onBeforeUnmount(() => {
     flex-direction: row;
     justify-content: center;
   }
+
+  .environment-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .deployment-dashboard {
     padding: 16px;
-  }
-
-  .kanban-board {
-    padding: 16px;
-  }
-
-  .environment-column {
-    width: 280px;
-    min-width: 280px;
   }
 
   .creation-modal-backdrop {

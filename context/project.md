@@ -9,7 +9,7 @@ Flow Track es una SPA construida con Vue 3 y Vite para visualizar y mover releas
 La interfaz modela un flujo simple de despliegue:
 
 - Un rail lateral minimalista permite crear releases, features, hotfixes y ambientes mediante modales centrados.
-- El tablero muestra un carril inicial `Pool` y luego los ambientes de despliegue en formato kanban.
+- El tablero muestra una bandeja compacta `Pool` como origen y una grilla desktop de ambientes visibles.
 - Los elementos se pueden arrastrar entre zonas para simular despliegues.
 - También se pueden crear nuevos items, releases y ambientes desde la UI.
 
@@ -40,7 +40,7 @@ La interfaz modela un flujo simple de despliegue:
 
 - `src/main.js`: monta la aplicación Vue.
 - `src/App.vue`: layout principal con navbar y carga del dashboard.
-- `src/components/Dashboard.vue`: concentra el rail de creación, los modales, el tablero de ambientes y la coordinación de eventos de drag and drop.
+- `src/components/Dashboard.vue`: concentra el rail de creación, los modales, la bandeja Pool, la grilla de ambientes y la coordinación de eventos de drag and drop.
 - `src/composables/useFlowTrackDomain.js`: expone el estado reactivo del dominio, inicializa el snapshot desde Supabase y persiste cada operación del tablero.
 - `src/domain/flowTrackDomain.js`: contiene reglas y utilidades del dominio para releases, items, ambientes y despliegues.
 - `src/domain/flowTrackSeed.js`: quedó como referencia histórica, pero ya no participa en el flujo runtime principal.
@@ -63,8 +63,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 
 ## Funcionalidades implementadas
 
-- Visualización de un carril `Pool` al inicio del tablero para artefactos recién creados o devueltos.
-- Visualización de ambientes ordenados por la propiedad `order`, con `Pool` al inicio y `Prod` fijo.
+- Visualización de una bandeja `Pool` compacta para artefactos recién creados o devueltos.
+- Visualización de ambientes en grilla desktop, ordenados por la propiedad `order`, con `Prod` fijo.
 - Carga inicial del tablero desde Supabase al montar la UI.
 - Persistencia del snapshot completo en Supabase después de cada mutación válida.
 - Creación de features y hotfixes desde modales centrados disparados por iconos.
@@ -93,7 +93,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Un item también puede moverse entre releases disponibles mediante drag and drop.
 - Un item que ya pertenece a un release no puede agregarse a otro release, salvo cuando se mueve explícitamente hacia un release desplegado, caso en el que se remueve del origen.
 - Al incorporar un item a un release disponible, se limpia su despliegue individual activo para que vuelva a verse dentro del release y no quede oculto por filtros de disponibilidad.
-- `Pool` y `Prod` son ambientes fijos; no participan del reordenamiento horizontal.
+- `Pool` y `Prod` son ambientes fijos; `Pool` no participa de la grilla principal y `Prod` conserva su tratamiento especial visual.
 - `Prod` queda marcado como ambiente especial mediante metadata (`kind: production`) y un tratamiento visual sutilmente distinto.
 
 ## Limitaciones y deuda técnica visibles
@@ -118,7 +118,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
 - Rail lateral vertical con iconos para `Nuevo release`, `Nuevo feature`, `Nuevo ambiente` y `Nuevo hotfix`.
 - Modales centrados con overlay para las altas.
-- Tablero horizontal de ambientes con `Pool` como primera columna.
+- Bandeja superior de Pool para origen de releases e items, y debajo una grilla desktop de ambientes sin scroll horizontal.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
 - En items dentro de release, la acción de desenganche usa el SVG `public/lock-unlocked.svg` y queda alineada al extremo derecho del header.
