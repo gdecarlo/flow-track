@@ -150,8 +150,11 @@
             class="environment-column environment-panel"
             :class="{
               'is-production': isProductionEnvironment(environment),
-              'is-fixed': isFixedEnvironment(environment)
+              'is-fixed': isFixedEnvironment(environment),
+              'is-artifact-drop-over': activeEnvironmentDropZoneId === environment.id
             }"
+            @dragover.capture="handleEnvironmentArtifactDragOver($event, environment)"
+            @drop.capture="handleEnvironmentArtifactDrop($event, environment)"
             @dragover.prevent
             @dragenter.prevent
             @drop="handleDrop($event, environment.id)"
@@ -175,87 +178,87 @@
             </div>
 
             <div class="deployments-container environment-panel-content">
-              <div
-                v-for="deployment in getReleaseDeployments(environment.id)"
-                :key="`release-${deployment.itemId}`"
-                class="deployed-release draggable-item environment-release-card"
-                :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
-                :data-type="'release'"
-                :data-id="deployment.itemId"
-                :draggable="!isBusy"
-                @dragstart="handleDragStart"
-                @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
-                @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
-              >
-                <div class="deployment-header">
-                  <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
-                  <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
-                </div>
+              <template v-for="deployment in getOrderedDeployments(environment.id)" :key="`${deployment.type}-${deployment.itemId}`">
+                <div
+                  v-if="deployment.type === 'release'"
+                  class="deployed-release draggable-item environment-release-card"
+                  :class="{ 'drag-over': activeReleaseDropZone.type === 'deployed-release' && activeReleaseDropZone.id === deployment.itemId }"
+                  :data-type="'release'"
+                  :data-id="deployment.itemId"
+                  :draggable="!isBusy"
+                  @dragstart="handleDragStart"
+                  @dragover.prevent="handleReleaseDragOver($event, 'deployed-release', deployment.itemId)"
+                  @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
+                >
+                  <div class="deployment-header">
+                    <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                    <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
+                  </div>
 
-                <div class="deployment-items environment-release-items">
-                  <div
-                    v-for="item in getDeployedReleaseItems(deployment)"
-                    :key="item.id"
-                    class="deployed-item-detail compact-deployed-item"
-                    :class="`item-${item.type}`"
-                  >
-                    <div class="item-header-row compact-item-header-row">
-                      <span class="item-title">{{ item.title }}</span>
-                      <button
-                        class="item-detach-btn"
-                        title="Desenganchar del release"
-                        @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
-                      >
-                        <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
-                      </button>
-                    </div>
-                    <p class="item-description">{{ getItemMetaLabel(item, getDeploymentItemTime(deployment, item.id)) }}</p>
-                    <div class="item-footer compact-item-footer">
-                      <div class="item-area-group">
+                  <div class="deployment-items environment-release-items">
+                    <div
+                      v-for="item in getDeployedReleaseItems(deployment)"
+                      :key="item.id"
+                      class="deployed-item-detail compact-deployed-item"
+                      :class="`item-${item.type}`"
+                    >
+                      <div class="item-header-row compact-item-header-row">
+                        <span class="item-title">{{ item.title }}</span>
                         <button
-                          v-for="area in itemAreas"
-                          :key="`${item.id}-${area}`"
-                          class="item-area-tag"
-                          :class="{ active: isAreaSelected(item, area) }"
-                          @click.stop="handleToggleItemArea(item.id, area)"
+                          class="item-detach-btn"
+                          title="Desenganchar del release"
+                          @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
                         >
-                          {{ area }}
+                          <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
                         </button>
+                      </div>
+                      <p class="item-description">{{ getItemMetaLabel(item, getDeploymentItemTime(deployment, item.id)) }}</p>
+                      <div class="item-footer compact-item-footer">
+                        <div class="item-area-group">
+                          <button
+                            v-for="area in itemAreas"
+                            :key="`${item.id}-${area}`"
+                            class="item-area-tag"
+                            :class="{ active: isAreaSelected(item, area) }"
+                            @click.stop="handleToggleItemArea(item.id, area)"
+                          >
+                            {{ area }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div
-                v-for="deployment in getItemDeployments(environment.id)"
-                :key="`item-${deployment.itemId}`"
-                class="deployed-item draggable-item compact-deployed-item"
-                :class="`item-${getItemById(deployment.itemId)?.type}`"
-                :data-type="'item'"
-                :data-id="deployment.itemId"
-                :draggable="!isBusy"
-                @dragstart="handleDragStart"
-              >
-                <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
-                <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
-                <div class="item-footer compact-item-footer">
-                  <div class="item-area-group">
-                    <button
-                      v-for="area in itemAreas"
-                      :key="`${deployment.itemId}-${area}`"
-                      class="item-area-tag"
-                      :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
-                      @click.stop="handleToggleItemArea(deployment.itemId, area)"
-                    >
-                      {{ area }}
-                    </button>
+                <div
+                  v-else
+                  class="deployed-item draggable-item compact-deployed-item"
+                  :class="`item-${getItemById(deployment.itemId)?.type}`"
+                  :data-type="'item'"
+                  :data-id="deployment.itemId"
+                  :draggable="!isBusy"
+                  @dragstart="handleDragStart"
+                >
+                  <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                  <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
+                  <div class="item-footer compact-item-footer">
+                    <div class="item-area-group">
+                      <button
+                        v-for="area in itemAreas"
+                        :key="`${deployment.itemId}-${area}`"
+                        class="item-area-tag"
+                        :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
+                        @click.stop="handleToggleItemArea(deployment.itemId, area)"
+                      >
+                        {{ area }}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </template>
 
               <p
-                v-if="getReleaseDeployments(environment.id).length === 0 && getItemDeployments(environment.id).length === 0"
+                v-if="getOrderedDeployments(environment.id).length === 0"
                 class="empty-column-copy"
               >
                 Sin despliegues todavía.
@@ -371,6 +374,7 @@ const {
 const dragData = ref(null)
 const draggedEnvironmentId = ref('')
 const dragOverEnvironmentId = ref('')
+const activeEnvironmentDropZoneId = ref('')
 const activeReleaseDropZone = ref({ type: '', id: '' })
 const activeModal = ref('')
 const showPoolTray = ref(true)
@@ -766,8 +770,13 @@ const getItemDeployments = environmentId => {
   return getDeploymentsByEnvironment(environmentId).filter(deployment => deployment.type === 'item')
 }
 
+const getOrderedDeployments = environmentId => {
+  return getDeploymentsByEnvironment(environmentId)
+}
+
 const clearDragState = () => {
   resetDragVisuals()
+  activeEnvironmentDropZoneId.value = ''
   activeReleaseDropZone.value = { type: '', id: '' }
   dragData.value = null
 }
@@ -805,6 +814,36 @@ const handleReleaseDragOver = (event, dropZoneType, dropZoneId) => {
     type: dropZoneType,
     id: dropZoneId
   }
+}
+
+const shouldCaptureEnvironmentArtifactDrop = (environment, event) => {
+  if (!isProductionEnvironment(environment) || draggedEnvironmentId.value) {
+    return false
+  }
+
+  const payload = resolveDropPayload(event)
+  return Boolean(payload?.type && payload?.id)
+}
+
+const handleEnvironmentArtifactDragOver = (event, environment) => {
+  if (!shouldCaptureEnvironmentArtifactDrop(environment, event)) {
+    activeEnvironmentDropZoneId.value = ''
+    return
+  }
+
+  activeEnvironmentDropZoneId.value = environment.id
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+const handleEnvironmentArtifactDrop = async (event, environment) => {
+  if (!shouldCaptureEnvironmentArtifactDrop(environment, event)) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  await handleDrop(event, environment.id)
 }
 
 const handleDropOnDeployedRelease = async (event, releaseId) => {
@@ -1322,11 +1361,28 @@ onBeforeUnmount(() => {
 .environment-panel {
   min-width: 0;
   min-height: 320px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .environment-column.is-production {
   border-color: rgba(148, 163, 184, 0.95);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.32), 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.environment-column.is-production.is-artifact-drop-over {
+  border-color: rgba(15, 23, 42, 0.95);
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.18), 0 18px 34px rgba(15, 23, 42, 0.14);
+  transform: translateY(-2px);
+}
+
+.environment-column.is-production.is-artifact-drop-over .environment-header {
+  background: rgba(15, 23, 42, 0.06);
+  border-bottom-color: rgba(15, 23, 42, 0.18);
+}
+
+.environment-column.is-production.is-artifact-drop-over .environment-title {
+  color: #020617;
 }
 
 .environment-header {

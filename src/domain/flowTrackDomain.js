@@ -208,6 +208,17 @@ export const createStandaloneItem = ({ title, type }, createdAt = new Date()) =>
   }
 }
 
+const insertDeploymentForEnvironment = (state, deployment, environmentId) => {
+  const targetEnvironment = state.environments.find(environment => environment.id === environmentId)
+
+  if (isProductionEnvironment(targetEnvironment)) {
+    state.deployments.unshift(deployment)
+    return
+  }
+
+  state.deployments.push(deployment)
+}
+
 export const createRelease = rawName => {
   return {
     id: `release-${Date.now()}`,
@@ -436,13 +447,15 @@ export const detachItemFromRelease = (state, itemId, releaseId, options = {}) =>
 
   removeDeploymentByItemId(deployments, itemId)
 
-  deployments.push({
+  const deployment = {
     id: `deploy-${Date.now()}`,
     itemId,
     type: 'item',
     environmentId: targetEnvironmentId,
     deployedAt: new Date()
-  })
+  }
+
+  insertDeploymentForEnvironment(state, deployment, targetEnvironmentId)
 
   return {
     ok: true,
@@ -538,7 +551,7 @@ export const createDeployment = (state, dragData, environmentId) => {
     }, {})
   }
 
-  deployments.push(deployment)
+  insertDeploymentForEnvironment(state, deployment, environmentId)
 
   return {
     ok: true,
