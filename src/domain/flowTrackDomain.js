@@ -518,6 +518,22 @@ export const deleteItem = (state, itemId) => {
   return { ok: true, item, release }
 }
 
+export const renameItem = (state, itemId, rawTitle) => {
+  const item = getItemById(state, itemId)
+  if (!item) {
+    return { ok: false, reason: '❌ Item no encontrado' }
+  }
+
+  const trimmedTitle = rawTitle.trim()
+  if (!trimmedTitle) {
+    return { ok: false, reason: '❌ El nombre del item es requerido' }
+  }
+
+  item.title = trimmedTitle
+
+  return { ok: true, item }
+}
+
 export const deleteRelease = (state, releaseId) => {
   const { releases, deployments } = state
   const releaseIndex = releases.findIndex(release => release.id === releaseId)

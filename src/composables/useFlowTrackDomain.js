@@ -25,6 +25,7 @@ import {
   isProductionEnvironment,
   isFixedEnvironment,
   normalizeEnvironmentLayout,
+  renameItem as renameDomainItem,
   reorderEnvironmentOrder,
   sortEnvironments,
   toggleItemAreaSelection
@@ -265,6 +266,10 @@ export const useFlowTrackDomain = () => {
     return runPersistedMutation(() => deleteDomainItem(currentState(), itemId))
   }
 
+  const renameItem = (itemId, rawTitle) => {
+    return runPersistedMutation(() => renameDomainItem(currentState(), itemId, rawTitle))
+  }
+
   const deleteRelease = releaseId => {
     return runPersistedMutation(() => deleteDomainRelease(currentState(), releaseId))
   }
@@ -303,6 +308,7 @@ export const useFlowTrackDomain = () => {
     toggleItemArea,
     detachItem,
     deleteItem,
+    renameItem,
     deleteRelease
   }
 }

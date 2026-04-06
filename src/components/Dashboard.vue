@@ -116,43 +116,63 @@
                         :data-type="'item'"
                         :data-id="item.id"
                         :data-release-id="release.id"
-                        :draggable="!isBusy"
+                        :draggable="!isBusy && !isEditingItem(item.id)"
                         @dragstart="handleDragStart"
                       >
                         <div class="item-header-row compact-item-header-row">
-                          <div class="item-header-main">
-                            <p class="item-title">{{ item.title }}</p>
-                            <div v-if="props.isEditMode" class="entity-inline-actions">
-                              <button
-                                class="entity-icon-btn"
-                                type="button"
-                                title="Editar item (próximamente)"
-                                aria-label="Editar item (próximamente)"
-                                disabled
-                                @mousedown.stop
-                                @click.stop
-                              >
-                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                  <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                  <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                              </button>
-                              <button
-                                class="entity-icon-btn entity-icon-btn-delete"
-                                type="button"
-                                title="Eliminar item"
-                                aria-label="Eliminar item"
-                                :disabled="isBusy"
-                                @mousedown.stop
-                                @click.stop="openDeleteConfirmation('item', item.id, item.title)"
-                              >
-                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                  <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                  <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                  <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                              </button>
-                            </div>
+                          <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(item.id) }">
+                            <template v-if="isEditingItem(item.id)">
+                              <form class="inline-edit-form" @submit.prevent="submitItemEdition" @click.stop>
+                                <input
+                                  ref="itemEditionInput"
+                                  v-model="pendingItemEdition.title"
+                                  type="text"
+                                  class="text-input inline-edit-input"
+                                  placeholder="Nuevo nombre del item"
+                                  :disabled="isBusy"
+                                  @mousedown.stop
+                                  @keydown.esc.stop.prevent="closeItemEdition"
+                                />
+                                <div class="inline-edit-actions">
+                                  <button type="button" class="secondary-btn inline-edit-btn" :disabled="isBusy" @mousedown.stop @click.stop="closeItemEdition">Cancelar</button>
+                                  <button type="submit" class="primary-btn inline-edit-btn" :disabled="isItemEditionSubmitDisabled" @mousedown.stop>Guardar</button>
+                                </div>
+                              </form>
+                            </template>
+                            <template v-else>
+                              <p class="item-title">{{ item.title }}</p>
+                              <div v-if="props.isEditMode" class="entity-inline-actions">
+                                <button
+                                  class="entity-icon-btn"
+                                  type="button"
+                                  title="Editar nombre del item"
+                                  aria-label="Editar nombre del item"
+                                  :disabled="isBusy"
+                                  @mousedown.stop
+                                  @click.stop="openItemEdition(item)"
+                                >
+                                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  </svg>
+                                </button>
+                                <button
+                                  class="entity-icon-btn entity-icon-btn-delete"
+                                  type="button"
+                                  title="Eliminar item"
+                                  aria-label="Eliminar item"
+                                  :disabled="isBusy"
+                                  @mousedown.stop
+                                  @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                                >
+                                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </template>
                           </div>
                           <button
                             class="item-detach-btn"
@@ -180,43 +200,63 @@
                     :class="`item-${item.type}`"
                     :data-type="'item'"
                     :data-id="item.id"
-                    :draggable="!isBusy"
+                    :draggable="!isBusy && !isEditingItem(item.id)"
                     @dragstart="handleDragStart"
                   >
                     <div class="item-header-row compact-item-header-row">
-                      <div class="item-header-main">
-                        <p class="item-title">{{ item.title }}</p>
-                        <div v-if="props.isEditMode" class="entity-inline-actions">
-                          <button
-                            class="entity-icon-btn"
-                            type="button"
-                            title="Editar item (próximamente)"
-                            aria-label="Editar item (próximamente)"
-                            disabled
-                            @mousedown.stop
-                            @click.stop
-                          >
-                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                              <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                              <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                          </button>
-                          <button
-                            class="entity-icon-btn entity-icon-btn-delete"
-                            type="button"
-                            title="Eliminar item"
-                            aria-label="Eliminar item"
-                            :disabled="isBusy"
-                            @mousedown.stop
-                            @click.stop="openDeleteConfirmation('item', item.id, item.title)"
-                          >
-                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                              <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                              <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                              <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                          </button>
-                        </div>
+                      <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(item.id) }">
+                        <template v-if="isEditingItem(item.id)">
+                          <form class="inline-edit-form" @submit.prevent="submitItemEdition" @click.stop>
+                            <input
+                              ref="itemEditionInput"
+                              v-model="pendingItemEdition.title"
+                              type="text"
+                              class="text-input inline-edit-input"
+                              placeholder="Nuevo nombre del item"
+                              :disabled="isBusy"
+                              @mousedown.stop
+                              @keydown.esc.stop.prevent="closeItemEdition"
+                            />
+                            <div class="inline-edit-actions">
+                              <button type="button" class="secondary-btn inline-edit-btn" :disabled="isBusy" @mousedown.stop @click.stop="closeItemEdition">Cancelar</button>
+                              <button type="submit" class="primary-btn inline-edit-btn" :disabled="isItemEditionSubmitDisabled" @mousedown.stop>Guardar</button>
+                            </div>
+                          </form>
+                        </template>
+                        <template v-else>
+                          <p class="item-title">{{ item.title }}</p>
+                          <div v-if="props.isEditMode" class="entity-inline-actions">
+                            <button
+                              class="entity-icon-btn"
+                              type="button"
+                              title="Editar nombre del item"
+                              aria-label="Editar nombre del item"
+                              :disabled="isBusy"
+                              @mousedown.stop
+                              @click.stop="openItemEdition(item)"
+                            >
+                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            </button>
+                            <button
+                              class="entity-icon-btn entity-icon-btn-delete"
+                              type="button"
+                              title="Eliminar item"
+                              aria-label="Eliminar item"
+                              :disabled="isBusy"
+                              @mousedown.stop
+                              @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                            >
+                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                        </template>
                       </div>
                     </div>
                     <p class="item-description">{{ getItemMetaLabel(item) }}</p>
@@ -335,39 +375,59 @@
                       :class="`item-${item.type}`"
                     >
                       <div class="item-header-row compact-item-header-row">
-                        <div class="item-header-main">
-                          <span class="item-title">{{ item.title }}</span>
-                          <div v-if="props.isEditMode" class="entity-inline-actions">
-                            <button
-                              class="entity-icon-btn"
-                              type="button"
-                              title="Editar item (próximamente)"
-                              aria-label="Editar item (próximamente)"
-                              disabled
-                              @mousedown.stop
-                              @click.stop
-                            >
-                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                              </svg>
-                            </button>
-                            <button
-                              class="entity-icon-btn entity-icon-btn-delete"
-                              type="button"
-                              title="Eliminar item"
-                              aria-label="Eliminar item"
-                              :disabled="isBusy"
-                              @mousedown.stop
-                              @click.stop="openDeleteConfirmation('item', item.id, item.title)"
-                            >
-                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                              </svg>
-                            </button>
-                          </div>
+                        <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(item.id) }">
+                          <template v-if="isEditingItem(item.id)">
+                            <form class="inline-edit-form" @submit.prevent="submitItemEdition" @click.stop>
+                              <input
+                                ref="itemEditionInput"
+                                v-model="pendingItemEdition.title"
+                                type="text"
+                                class="text-input inline-edit-input"
+                                placeholder="Nuevo nombre del item"
+                                :disabled="isBusy"
+                                @mousedown.stop
+                                @keydown.esc.stop.prevent="closeItemEdition"
+                              />
+                              <div class="inline-edit-actions">
+                                <button type="button" class="secondary-btn inline-edit-btn" :disabled="isBusy" @mousedown.stop @click.stop="closeItemEdition">Cancelar</button>
+                                <button type="submit" class="primary-btn inline-edit-btn" :disabled="isItemEditionSubmitDisabled" @mousedown.stop>Guardar</button>
+                              </div>
+                            </form>
+                          </template>
+                          <template v-else>
+                            <span class="item-title">{{ item.title }}</span>
+                            <div v-if="props.isEditMode" class="entity-inline-actions">
+                              <button
+                                class="entity-icon-btn"
+                                type="button"
+                                title="Editar nombre del item"
+                                aria-label="Editar nombre del item"
+                                :disabled="isBusy"
+                                @mousedown.stop
+                                @click.stop="openItemEdition(item)"
+                              >
+                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                  <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                              </button>
+                              <button
+                                class="entity-icon-btn entity-icon-btn-delete"
+                                type="button"
+                                title="Eliminar item"
+                                aria-label="Eliminar item"
+                                :disabled="isBusy"
+                                @mousedown.stop
+                                @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                              >
+                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                  <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                  <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                              </button>
+                            </div>
+                          </template>
                         </div>
                         <button
                           class="item-detach-btn"
@@ -401,43 +461,63 @@
                   :class="`item-${getItemById(deployment.itemId)?.type}`"
                   :data-type="'item'"
                   :data-id="deployment.itemId"
-                  :draggable="!isBusy"
+                  :draggable="!isBusy && !isEditingItem(deployment.itemId)"
                   @dragstart="handleDragStart"
                 >
                   <div class="item-header-row compact-item-header-row">
-                    <div class="item-header-main">
-                      <p class="item-title deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
-                      <div v-if="props.isEditMode" class="entity-inline-actions">
-                        <button
-                          class="entity-icon-btn"
-                          type="button"
-                          title="Editar item (próximamente)"
-                          aria-label="Editar item (próximamente)"
-                          disabled
-                          @mousedown.stop
-                          @click.stop
-                        >
-                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
-                        </button>
-                        <button
-                          class="entity-icon-btn entity-icon-btn-delete"
-                          type="button"
-                          title="Eliminar item"
-                          aria-label="Eliminar item"
-                          :disabled="isBusy"
-                          @mousedown.stop
-                          @click.stop="openDeleteConfirmation('item', deployment.itemId, getItemById(deployment.itemId)?.title || 'Item')"
-                        >
-                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                            <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
-                        </button>
-                      </div>
+                    <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(deployment.itemId) }">
+                      <template v-if="isEditingItem(deployment.itemId)">
+                        <form class="inline-edit-form" @submit.prevent="submitItemEdition" @click.stop>
+                          <input
+                            ref="itemEditionInput"
+                            v-model="pendingItemEdition.title"
+                            type="text"
+                            class="text-input inline-edit-input"
+                            placeholder="Nuevo nombre del item"
+                            :disabled="isBusy"
+                            @mousedown.stop
+                            @keydown.esc.stop.prevent="closeItemEdition"
+                          />
+                          <div class="inline-edit-actions">
+                            <button type="button" class="secondary-btn inline-edit-btn" :disabled="isBusy" @mousedown.stop @click.stop="closeItemEdition">Cancelar</button>
+                            <button type="submit" class="primary-btn inline-edit-btn" :disabled="isItemEditionSubmitDisabled" @mousedown.stop>Guardar</button>
+                          </div>
+                        </form>
+                      </template>
+                      <template v-else>
+                        <p class="item-title deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                        <div v-if="props.isEditMode" class="entity-inline-actions">
+                          <button
+                            class="entity-icon-btn"
+                            type="button"
+                            title="Editar nombre del item"
+                            aria-label="Editar nombre del item"
+                            :disabled="isBusy"
+                            @mousedown.stop
+                            @click.stop="openItemEdition(getItemById(deployment.itemId))"
+                          >
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                              <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            class="entity-icon-btn entity-icon-btn-delete"
+                            type="button"
+                            title="Eliminar item"
+                            aria-label="Eliminar item"
+                            :disabled="isBusy"
+                            @mousedown.stop
+                            @click.stop="openDeleteConfirmation('item', deployment.itemId, getItemById(deployment.itemId)?.title || 'Item')"
+                          >
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                              <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                              <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </template>
                     </div>
                   </div>
                   <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
@@ -599,6 +679,7 @@ const {
   toggleItemArea,
   detachItem,
   deleteItem,
+  renameItem,
   deleteRelease
 } = useFlowTrackDomain()
 
@@ -626,7 +707,9 @@ const newEnvironment = ref({
 const titleInput = ref(null)
 const releaseNameInput = ref(null)
 const environmentNameInput = ref(null)
+const itemEditionInput = ref(null)
 const pendingDeletion = ref(null)
+const pendingItemEdition = ref(null)
 
 const creationActions = [
   { kind: 'release', label: 'Nuevo release', icon: '/new-release.png' },
@@ -660,6 +743,15 @@ const isItemModal = computed(() => {
 
 const isDeleteModalOpen = computed(() => {
   return Boolean(pendingDeletion.value)
+})
+
+const isItemEditionSubmitDisabled = computed(() => {
+  if (isBusy.value || !pendingItemEdition.value) {
+    return true
+  }
+
+  const trimmedTitle = pendingItemEdition.value.title.trim()
+  return !trimmedTitle || trimmedTitle === pendingItemEdition.value.originalTitle
 })
 
 const deleteModalTitle = computed(() => {
@@ -814,6 +906,20 @@ watch(activeModal, async modalKind => {
   }
 })
 
+watch(() => pendingItemEdition.value?.id, async itemId => {
+  if (!itemId) {
+    return
+  }
+
+  await focusInput(itemEditionInput)
+})
+
+watch(() => props.isEditMode, isEditMode => {
+  if (!isEditMode) {
+    closeItemEdition()
+  }
+})
+
 const getItemCreatedAt = item => {
   const rawId = item?.id?.split('-')?.at(-1)
   const timestamp = Number(rawId)
@@ -944,6 +1050,8 @@ const openCreationModal = modalKind => {
     return
   }
 
+  closeItemEdition()
+
   if (modalKind === 'feature' || modalKind === 'hotfix') {
     newItem.value.type = modalKind
   }
@@ -972,10 +1080,59 @@ const handleBackdropClick = () => {
   closeCreationModal()
 }
 
+const isEditingItem = itemId => {
+  return pendingItemEdition.value?.id === itemId
+}
+
+const openItemEdition = item => {
+  if (!item || !ensureInteractive()) {
+    return
+  }
+
+  pendingDeletion.value = null
+  pendingItemEdition.value = {
+    id: item.id,
+    title: item.title,
+    originalTitle: item.title.trim()
+  }
+}
+
+const closeItemEdition = () => {
+  if (isSaving.value) {
+    return
+  }
+
+  pendingItemEdition.value = null
+}
+
+const submitItemEdition = async () => {
+  if (!pendingItemEdition.value || !ensureInteractive()) {
+    return
+  }
+
+  const edition = pendingItemEdition.value
+  const trimmedTitle = edition.title.trim()
+
+  if (trimmedTitle === edition.originalTitle) {
+    closeItemEdition()
+    return
+  }
+
+  const result = await renameItem(edition.id, trimmedTitle)
+  if (!result.ok) {
+    console.warn(result.reason)
+    return
+  }
+
+  closeItemEdition()
+}
+
 const openDeleteConfirmation = (type, id, label) => {
   if (!ensureInteractive()) {
     return
   }
+
+  closeItemEdition()
 
   pendingDeletion.value = {
     type,
@@ -1365,6 +1522,11 @@ const handleDocumentKeydown = event => {
 
   if (isDeleteModalOpen.value) {
     closeDeleteConfirmation()
+    return
+  }
+
+  if (pendingItemEdition.value) {
+    closeItemEdition()
     return
   }
 
@@ -1902,6 +2064,10 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
+.item-header-main.is-inline-editing {
+  display: block;
+}
+
 .entity-inline-actions {
   display: inline-flex;
   align-items: center;
@@ -1947,6 +2113,30 @@ onBeforeUnmount(() => {
 .entity-icon-btn-delete:hover:not(:disabled) {
   background: #fecaca;
   color: #991b1b;
+}
+
+.inline-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.inline-edit-input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.inline-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.inline-edit-btn {
+  padding: 8px 12px;
+  font-size: 0.74rem;
 }
 
 .item-detach-btn {

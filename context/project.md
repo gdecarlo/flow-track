@@ -107,7 +107,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - La app depende de `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; si faltan, bloquea la operación con un error de inicialización.
 - La persistencia actual usa snapshot JSON único; todavía no hay tablas normalizadas por entidad ni auditoría detallada.
 - Aunque la lógica de dominio fue extraída a módulos dedicados, `Dashboard.vue` todavía mantiene un template grande y estilos locales extensos.
-- Los botones de edición están renderizados en modo edición, pero su comportamiento todavía no está implementado.
+- La edición real ya existe solo para items y se limita al nombre; los releases todavía conservan el placeholder visual de edición.
 - `src/style.css` no participa en el render porque la importación está comentada en `src/main.js`.
 - `index.html` sigue con metadatos iniciales de plantilla y no refleja la marca del producto.
 - La dependencia `vue-draggable-next` está instalada, pero el tablero usa drag and drop nativo.
@@ -122,7 +122,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
 - Rail lateral vertical con iconos para `Nuevo release`, `Nuevo feature`, `Nuevo ambiente` y `Nuevo hotfix`.
 - Modales centrados con overlay para las altas.
-- En modo edición, cada item y cada release visible muestran iconos inline de editar y eliminar junto al título; editar queda como placeholder visual y eliminar abre un modal de advertencia.
+- En modo edición, cada item y cada release visible muestran iconos inline de editar y eliminar junto al título; los items ya permiten editar inline su nombre con guardado persistido y eliminar abre un modal de advertencia.
 - Bandeja superior de Pool para origen de releases e items, y debajo una grilla desktop de ambientes sin scroll horizontal.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
