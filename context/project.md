@@ -39,10 +39,10 @@ La interfaz modela un flujo simple de despliegue:
 ## Estructura relevante
 
 - `src/main.js`: monta la aplicación Vue.
-- `src/App.vue`: layout principal con navbar y carga del dashboard.
-- `src/components/Dashboard.vue`: concentra el rail de creación, los modales, la bandeja Pool, la grilla de ambientes y la coordinación de eventos de drag and drop.
-- `src/composables/useFlowTrackDomain.js`: expone el estado reactivo del dominio, inicializa el snapshot desde Supabase y persiste cada operación del tablero.
-- `src/domain/flowTrackDomain.js`: contiene reglas y utilidades del dominio para releases, items, ambientes y despliegues.
+- `src/App.vue`: layout principal con navbar, toggle de modo edición y carga del dashboard.
+- `src/components/Dashboard.vue`: concentra el rail de creación, los modales, la bandeja Pool, la grilla de ambientes, el modo edición visual y la coordinación de eventos de drag and drop.
+- `src/composables/useFlowTrackDomain.js`: expone el estado reactivo del dominio, inicializa el snapshot desde Supabase y persiste cada operación del tablero, incluido el borrado.
+- `src/domain/flowTrackDomain.js`: contiene reglas y utilidades del dominio para releases, items, ambientes, despliegues y borrado destructivo.
 - `src/domain/flowTrackSeed.js`: quedó como referencia histórica, pero ya no participa en el flujo runtime principal.
 - `src/services/persistence/flowTrackSnapshotRepository.js`: encapsula carga y guardado del snapshot compartido en Supabase.
 - `src/services/persistence/flowTrackSnapshotMapper.js`: serializa, deserializa y clona el estado persistido.
@@ -83,6 +83,9 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Los items dentro de un release se pueden desenganchar con un icono `🔓`; si estaban dentro de un release desplegado, pasan a desplegarse como item individual en el mismo ambiente.
 - Al desenganchar desde releases no desplegados, el item vuelve a quedar disponible y reaparece en `Pool`.
 - Los snapshots viejos se normalizan automáticamente para agregar `Pool` y tipar `Prod` como ambiente fijo de producción.
+- Existe un modo edición activable desde la navbar que muestra acciones secundarias sobre items y releases.
+- El borrado de items es real y persistido; limpia también cualquier deployment asociado.
+- El borrado de releases es real, persistido y en cascada: elimina el release, sus items asociados y los deployments relacionados.
 
 ## Reglas de comportamiento observadas
 
@@ -95,6 +98,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Al incorporar un item a un release disponible, se limpia su despliegue individual activo para que vuelva a verse dentro del release y no quede oculto por filtros de disponibilidad.
 - `Pool` y `Prod` son ambientes fijos; `Pool` no participa de la grilla principal y `Prod` conserva su tratamiento especial visual.
 - `Prod` queda marcado como ambiente especial mediante metadata (`kind: production`) y un tratamiento visual sutilmente distinto.
+- Ningún item ni release se elimina sin confirmación explícita desde un modal de advertencia.
 
 ## Limitaciones y deuda técnica visibles
 
@@ -103,7 +107,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - La app depende de `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; si faltan, bloquea la operación con un error de inicialización.
 - La persistencia actual usa snapshot JSON único; todavía no hay tablas normalizadas por entidad ni auditoría detallada.
 - Aunque la lógica de dominio fue extraída a módulos dedicados, `Dashboard.vue` todavía mantiene un template grande y estilos locales extensos.
-- Los botones de información y edición están renderizados, pero no tienen comportamiento implementado.
+- Los botones de edición están renderizados en modo edición, pero su comportamiento todavía no está implementado.
 - `src/style.css` no participa en el render porque la importación está comentada en `src/main.js`.
 - `index.html` sigue con metadatos iniciales de plantilla y no refleja la marca del producto.
 - La dependencia `vue-draggable-next` está instalada, pero el tablero usa drag and drop nativo.
@@ -113,11 +117,12 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 ## UI actual
 
 - Diseño claro y orientado a dashboard.
-- Navbar superior simple con el nombre Flow Track.
+- Navbar superior con el nombre Flow Track, el último guardado inline y un toggle de `Modo edición` alineado a la derecha.
 - El texto `Último guardado ...` se muestra inline junto al título `Flow Track` en la navbar.
 - El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
 - Rail lateral vertical con iconos para `Nuevo release`, `Nuevo feature`, `Nuevo ambiente` y `Nuevo hotfix`.
 - Modales centrados con overlay para las altas.
+- En modo edición, cada item y cada release visible muestran iconos inline de editar y eliminar junto al título; editar queda como placeholder visual y eliminar abre un modal de advertencia.
 - Bandeja superior de Pool para origen de releases e items, y debajo una grilla desktop de ambientes sin scroll horizontal.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.

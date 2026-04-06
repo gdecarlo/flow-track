@@ -4,6 +4,8 @@ import {
   addItemToDeployedRelease,
   addStandaloneItemToRelease,
   createDeployment,
+  deleteItem as deleteDomainItem,
+  deleteRelease as deleteDomainRelease,
   detachItemFromRelease,
   createEnvironment,
   createRelease,
@@ -259,6 +261,14 @@ export const useFlowTrackDomain = () => {
     return runPersistedMutation(() => detachItemFromRelease(currentState(), itemId, releaseId, options))
   }
 
+  const deleteItem = itemId => {
+    return runPersistedMutation(() => deleteDomainItem(currentState(), itemId))
+  }
+
+  const deleteRelease = releaseId => {
+    return runPersistedMutation(() => deleteDomainRelease(currentState(), releaseId))
+  }
+
   return {
     initialize,
     isInitializing,
@@ -291,6 +301,8 @@ export const useFlowTrackDomain = () => {
     addItemToActiveRelease,
     deployArtifact,
     toggleItemArea,
-    detachItem
+    detachItem,
+    deleteItem,
+    deleteRelease
   }
 }

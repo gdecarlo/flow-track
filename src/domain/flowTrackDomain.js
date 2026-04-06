@@ -52,6 +52,34 @@ const removeItemFromOtherReleases = (releases, itemId, targetReleaseId) => {
   })
 }
 
+const removeItemFromReleaseById = (releases, itemId) => {
+  for (const release of releases) {
+    const itemIndex = release.items.findIndex(item => item.id === itemId)
+    if (itemIndex !== -1) {
+      const [item] = release.items.splice(itemIndex, 1)
+      return { item, release }
+    }
+  }
+
+  return { item: null, release: null }
+}
+
+const removeItemReferencesFromReleaseDeployments = (deployments, releaseId, itemId) => {
+  deployments.forEach(deployment => {
+    if (deployment.type !== 'release' || deployment.itemId !== releaseId) {
+      return
+    }
+
+    if (Array.isArray(deployment.snapshotItemIds)) {
+      deployment.snapshotItemIds = deployment.snapshotItemIds.filter(snapshotItemId => snapshotItemId !== itemId)
+    }
+
+    if (deployment.itemDeploymentTimes?.[itemId]) {
+      delete deployment.itemDeploymentTimes[itemId]
+    }
+  })
+}
+
 export const formatDate = date => {
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
@@ -462,6 +490,54 @@ export const detachItemFromRelease = (state, itemId, releaseId, options = {}) =>
     item,
     release,
     environmentId: targetEnvironmentId
+  }
+}
+
+export const deleteItem = (state, itemId) => {
+  const { standaloneItems, releases, deployments } = state
+  const item = getItemById(state, itemId)
+
+  if (!item) {
+    return { ok: false, reason: '❌ Item no encontrado' }
+  }
+
+  removeDeploymentByItemId(deployments, itemId)
+
+  const removedFromStandalone = removeStandaloneItemById(standaloneItems, itemId)
+  if (removedFromStandalone) {
+    return { ok: true, item }
+  }
+
+  const { release } = removeItemFromReleaseById(releases, itemId)
+  if (!release) {
+    return { ok: false, reason: '❌ No se pudo eliminar el item' }
+  }
+
+  removeItemReferencesFromReleaseDeployments(deployments, release.id, itemId)
+
+  return { ok: true, item, release }
+}
+
+export const deleteRelease = (state, releaseId) => {
+  const { releases, deployments } = state
+  const releaseIndex = releases.findIndex(release => release.id === releaseId)
+
+  if (releaseIndex === -1) {
+    return { ok: false, reason: '❌ Release no encontrado' }
+  }
+
+  const [release] = releases.splice(releaseIndex, 1)
+  const deletedItemIds = release.items.map(item => item.id)
+
+  removeDeploymentByItemId(deployments, releaseId)
+  deletedItemIds.forEach(itemId => {
+    removeDeploymentByItemId(deployments, itemId)
+  })
+
+  return {
+    ok: true,
+    release,
+    deletedItemIds
   }
 }
 

@@ -4,9 +4,14 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Dashboard from './components/Dashboard.vue';
 
 const lastSavedLabel = ref('')
+const isEditMode = ref(false)
 
 const handleLastSavedLabel = event => {
   lastSavedLabel.value = event.detail || ''
+}
+
+const toggleEditMode = () => {
+  isEditMode.value = !isEditMode.value
 }
 
 onMounted(() => {
@@ -28,13 +33,28 @@ onBeforeUnmount(() => {
           <h1 class="app-title">Flow Track</h1>
           <span v-if="lastSavedLabel" class="last-saved-inline">{{ lastSavedLabel }}</span>
         </div>
-        
+
+        <div class="navbar-actions">
+          <button
+            class="edit-mode-toggle"
+            :class="{ active: isEditMode }"
+            :aria-pressed="isEditMode"
+            type="button"
+            @click="toggleEditMode"
+          >
+            <svg class="edit-mode-toggle-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="edit-mode-toggle-label">Modo edición</span>
+          </button>
+        </div>
       </div>
     </nav>
     
     <!-- Contenido principal -->
     <main class="main-content">
-      <Dashboard />
+      <Dashboard :is-edit-mode="isEditMode" />
     </main>
   </div>
 </template>
@@ -100,6 +120,44 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
+}
+
+.edit-mode-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 252, 0.96);
+  color: #334155;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.edit-mode-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(100, 116, 139, 0.55);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.edit-mode-toggle.active {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+}
+
+.edit-mode-toggle-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.edit-mode-toggle-label {
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .status-indicator {
@@ -148,6 +206,15 @@ onBeforeUnmount(() => {
 
   .last-saved-inline {
     font-size: 0.75rem;
+  }
+
+  .edit-mode-toggle {
+    height: 36px;
+    padding: 0 12px;
+  }
+
+  .edit-mode-toggle-label {
+    font-size: 0.78rem;
   }
   
   .status-text {

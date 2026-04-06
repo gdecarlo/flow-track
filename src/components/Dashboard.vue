@@ -74,6 +74,37 @@
                       @dragstart="handleDragStart"
                     >
                       <h4>{{ release.name }}</h4>
+                      <div v-if="props.isEditMode" class="entity-inline-actions">
+                        <button
+                          class="entity-icon-btn"
+                          type="button"
+                          title="Editar release (próximamente)"
+                          aria-label="Editar release (próximamente)"
+                          disabled
+                          @mousedown.stop
+                          @click.stop
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          class="entity-icon-btn entity-icon-btn-delete"
+                          type="button"
+                          title="Eliminar release"
+                          aria-label="Eliminar release"
+                          :disabled="isBusy"
+                          @mousedown.stop
+                          @click.stop="openDeleteConfirmation('release', release.id, release.name)"
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div v-if="getAvailableItemsForRelease(release).length > 0" class="items-container pool-release-items">
@@ -89,7 +120,40 @@
                         @dragstart="handleDragStart"
                       >
                         <div class="item-header-row compact-item-header-row">
-                          <p class="item-title">{{ item.title }}</p>
+                          <div class="item-header-main">
+                            <p class="item-title">{{ item.title }}</p>
+                            <div v-if="props.isEditMode" class="entity-inline-actions">
+                              <button
+                                class="entity-icon-btn"
+                                type="button"
+                                title="Editar item (próximamente)"
+                                aria-label="Editar item (próximamente)"
+                                disabled
+                                @mousedown.stop
+                                @click.stop
+                              >
+                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                  <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                              </button>
+                              <button
+                                class="entity-icon-btn entity-icon-btn-delete"
+                                type="button"
+                                title="Eliminar item"
+                                aria-label="Eliminar item"
+                                :disabled="isBusy"
+                                @mousedown.stop
+                                @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                              >
+                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                  <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                  <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                  <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
                           <button
                             class="item-detach-btn"
                             title="Desenganchar del release"
@@ -119,7 +183,42 @@
                     :draggable="!isBusy"
                     @dragstart="handleDragStart"
                   >
-                    <p class="item-title">{{ item.title }}</p>
+                    <div class="item-header-row compact-item-header-row">
+                      <div class="item-header-main">
+                        <p class="item-title">{{ item.title }}</p>
+                        <div v-if="props.isEditMode" class="entity-inline-actions">
+                          <button
+                            class="entity-icon-btn"
+                            type="button"
+                            title="Editar item (próximamente)"
+                            aria-label="Editar item (próximamente)"
+                            disabled
+                            @mousedown.stop
+                            @click.stop
+                          >
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                              <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            class="entity-icon-btn entity-icon-btn-delete"
+                            type="button"
+                            title="Eliminar item"
+                            aria-label="Eliminar item"
+                            :disabled="isBusy"
+                            @mousedown.stop
+                            @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                          >
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                              <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                              <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                     <p class="item-description">{{ getItemMetaLabel(item) }}</p>
                     <div class="item-footer compact-item-footer">
                       <div class="item-area-group">
@@ -191,7 +290,40 @@
                   @drop="handleDropOnDeployedRelease($event, deployment.itemId)"
                 >
                   <div class="deployment-header">
-                    <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                    <div class="release-title-line">
+                      <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                      <div v-if="props.isEditMode" class="entity-inline-actions">
+                        <button
+                          class="entity-icon-btn"
+                          type="button"
+                          title="Editar release (próximamente)"
+                          aria-label="Editar release (próximamente)"
+                          disabled
+                          @mousedown.stop
+                          @click.stop
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          class="entity-icon-btn entity-icon-btn-delete"
+                          type="button"
+                          title="Eliminar release"
+                          aria-label="Eliminar release"
+                          :disabled="isBusy"
+                          @mousedown.stop
+                          @click.stop="openDeleteConfirmation('release', deployment.itemId, getReleaseById(deployment.itemId)?.name || 'Release')"
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                     <span class="deployment-date">{{ formatRelativeTime(deployment.deployedAt) }}</span>
                   </div>
 
@@ -203,7 +335,40 @@
                       :class="`item-${item.type}`"
                     >
                       <div class="item-header-row compact-item-header-row">
-                        <span class="item-title">{{ item.title }}</span>
+                        <div class="item-header-main">
+                          <span class="item-title">{{ item.title }}</span>
+                          <div v-if="props.isEditMode" class="entity-inline-actions">
+                            <button
+                              class="entity-icon-btn"
+                              type="button"
+                              title="Editar item (próximamente)"
+                              aria-label="Editar item (próximamente)"
+                              disabled
+                              @mousedown.stop
+                              @click.stop
+                            >
+                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            </button>
+                            <button
+                              class="entity-icon-btn entity-icon-btn-delete"
+                              type="button"
+                              title="Eliminar item"
+                              aria-label="Eliminar item"
+                              :disabled="isBusy"
+                              @mousedown.stop
+                              @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                            >
+                              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                         <button
                           class="item-detach-btn"
                           title="Desenganchar del release"
@@ -239,7 +404,42 @@
                   :draggable="!isBusy"
                   @dragstart="handleDragStart"
                 >
-                  <p class="deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                  <div class="item-header-row compact-item-header-row">
+                    <div class="item-header-main">
+                      <p class="item-title deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                      <div v-if="props.isEditMode" class="entity-inline-actions">
+                        <button
+                          class="entity-icon-btn"
+                          type="button"
+                          title="Editar item (próximamente)"
+                          aria-label="Editar item (próximamente)"
+                          disabled
+                          @mousedown.stop
+                          @click.stop
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          class="entity-icon-btn entity-icon-btn-delete"
+                          type="button"
+                          title="Eliminar item"
+                          aria-label="Eliminar item"
+                          :disabled="isBusy"
+                          @mousedown.stop
+                          @click.stop="openDeleteConfirmation('item', deployment.itemId, getItemById(deployment.itemId)?.title || 'Item')"
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M7.08301 7.5V14.1667C7.08301 14.6269 7.45611 15 7.91634 15H12.083C12.5432 15 12.9163 14.6269 12.9163 14.1667V7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M8.33301 5.41667C8.33301 4.95643 8.70611 4.58333 9.16634 4.58333H10.833C11.2932 4.58333 11.6663 4.95643 11.6663 5.41667V7.5H8.33301V5.41667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <p class="item-description">{{ getItemMetaLabel(getItemById(deployment.itemId), deployment.deployedAt) }}</p>
                   <div class="item-footer compact-item-footer">
                     <div class="item-area-group">
@@ -330,6 +530,28 @@
         </form>
       </div>
     </div>
+
+    <div v-if="isDeleteModalOpen" class="creation-modal-backdrop" @click="handleDeleteBackdropClick">
+      <div class="creation-modal delete-confirmation-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-modal-title" @click.stop>
+        <div class="creation-modal-header">
+          <div>
+            <p class="creation-modal-kicker delete-modal-kicker">Eliminar</p>
+            <h2 id="delete-modal-title" class="creation-modal-title">{{ pendingDeletion?.label }}</h2>
+          </div>
+          <button class="modal-close-btn" type="button" :disabled="isSaving" @click="closeDeleteConfirmation">×</button>
+        </div>
+
+        <p class="delete-confirmation-copy">
+          {{ deleteModalCopy }}
+         
+        </p>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn" :disabled="isSaving" @click="closeDeleteConfirmation">Cancelar</button>
+          <button type="button" class="danger-btn" :disabled="isSaving" @click="handleConfirmDelete">Eliminar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -337,6 +559,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useFlowTrackDomain } from '../composables/useFlowTrackDomain'
+
+const props = defineProps({
+  isEditMode: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const {
   initialize,
@@ -368,7 +597,9 @@ const {
   addItemToActiveRelease,
   deployArtifact,
   toggleItemArea,
-  detachItem
+  detachItem,
+  deleteItem,
+  deleteRelease
 } = useFlowTrackDomain()
 
 const dragData = ref(null)
@@ -395,6 +626,7 @@ const newEnvironment = ref({
 const titleInput = ref(null)
 const releaseNameInput = ref(null)
 const environmentNameInput = ref(null)
+const pendingDeletion = ref(null)
 
 const creationActions = [
   { kind: 'release', label: 'Nuevo release', icon: '/new-release.png' },
@@ -424,6 +656,26 @@ const isBusy = computed(() => {
 
 const isItemModal = computed(() => {
   return activeModal.value === 'feature' || activeModal.value === 'hotfix'
+})
+
+const isDeleteModalOpen = computed(() => {
+  return Boolean(pendingDeletion.value)
+})
+
+const deleteModalTitle = computed(() => {
+  if (pendingDeletion.value?.type === 'release') {
+    return 'Eliminar release'
+  }
+
+  return 'Eliminar item'
+})
+
+const deleteModalCopy = computed(() => {
+  if (pendingDeletion.value?.type === 'release') {
+    return 'Esta acción eliminará el release y también todos los items que tiene asociados. No se puede deshacer.'
+  }
+
+  return 'Esta acción eliminará el item de forma permanente y limpiará cualquier despliegue asociado. No se puede deshacer.'
 })
 
 const modalTitle = computed(() => {
@@ -718,6 +970,48 @@ const togglePoolTray = () => {
 
 const handleBackdropClick = () => {
   closeCreationModal()
+}
+
+const openDeleteConfirmation = (type, id, label) => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  pendingDeletion.value = {
+    type,
+    id,
+    label
+  }
+}
+
+const closeDeleteConfirmation = () => {
+  if (isSaving.value) {
+    return
+  }
+
+  pendingDeletion.value = null
+}
+
+const handleDeleteBackdropClick = () => {
+  closeDeleteConfirmation()
+}
+
+const handleConfirmDelete = async () => {
+  if (!pendingDeletion.value || !ensureInteractive()) {
+    return
+  }
+
+  const deletion = pendingDeletion.value
+  const result = deletion.type === 'release'
+    ? await deleteRelease(deletion.id)
+    : await deleteItem(deletion.id)
+
+  if (!result.ok) {
+    console.warn(result.reason)
+    return
+  }
+
+  closeDeleteConfirmation()
 }
 
 const submitActiveModal = async () => {
@@ -1065,7 +1359,16 @@ const handleDocumentDragEnd = () => {
 }
 
 const handleDocumentKeydown = event => {
-  if (event.key === 'Escape' && activeModal.value) {
+  if (event.key !== 'Escape') {
+    return
+  }
+
+  if (isDeleteModalOpen.value) {
+    closeDeleteConfirmation()
+    return
+  }
+
+  if (activeModal.value) {
     closeCreationModal()
   }
 }
@@ -1479,6 +1782,9 @@ onBeforeUnmount(() => {
 
 .release-header {
   cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .release-header h4,
@@ -1585,6 +1891,62 @@ onBeforeUnmount(() => {
 .item-header-row .item-title {
   flex: 1;
   margin: 0;
+}
+
+.item-header-main,
+.release-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.entity-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.entity-icon-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(226, 232, 240, 0.88);
+  color: #64748b;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.entity-icon-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.entity-icon-btn:hover:not(:disabled) {
+  background: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.entity-icon-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.entity-icon-btn-delete {
+  background: rgba(254, 226, 226, 0.88);
+  color: #b91c1c;
+}
+
+.entity-icon-btn-delete:hover:not(:disabled) {
+  background: #fecaca;
+  color: #991b1b;
 }
 
 .item-detach-btn {
@@ -1794,7 +2156,8 @@ onBeforeUnmount(() => {
 }
 
 .primary-btn,
-.secondary-btn {
+.secondary-btn,
+.danger-btn {
   border: none;
   border-radius: 999px;
   padding: 11px 18px;
@@ -1812,11 +2175,39 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 
+.danger-btn {
+  background: #dc2626;
+  color: white;
+}
+
 .primary-btn:disabled,
 .secondary-btn:disabled,
+.danger-btn:disabled,
 .modal-close-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.delete-confirmation-modal {
+  width: min(460px, 100%);
+}
+
+.delete-modal-kicker {
+  color: #dc2626;
+}
+
+.delete-confirmation-copy {
+  margin: 0;
+  color: #475569;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.delete-confirmation-name {
+  display: block;
+  margin-top: 10px;
+  color: #0f172a;
+  font-size: 1rem;
 }
 
 .sr-only {
