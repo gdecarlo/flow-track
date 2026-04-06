@@ -1947,8 +1947,9 @@ onBeforeUnmount(() => {
 .environment-title {
   margin: 0;
   color: #0f172a;
-  font-size: 1rem;
+  font-size: 3rem;
   font-weight: 700;
+  font-family: 'Minimalist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .environment-chip {
