@@ -3,9 +3,11 @@ import {
   environmentKinds,
   isPoolEnvironment,
   isProductionEnvironment,
+  normalizeItemArea,
   normalizeEnvironmentLayout,
   poolEnvironmentId,
-  poolEnvironmentName
+  poolEnvironmentName,
+  validAreas
 } from '../../domain/flowTrackDomain'
 
 export const createEmptyFlowTrackState = () => ({
@@ -15,14 +17,12 @@ export const createEmptyFlowTrackState = () => ({
   deployments: []
 })
 
-const validAreas = ['front', 'back', 'app']
-
 const normalizeAreas = areas => {
   if (!Array.isArray(areas)) {
     return []
   }
 
-  return [...new Set(areas.filter(area => validAreas.includes(area)))]
+  return [...new Set(areas.map(normalizeItemArea).filter(area => validAreas.includes(area)))]
 }
 
 const normalizeItemDeploymentTimes = value => {

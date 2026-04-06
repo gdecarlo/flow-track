@@ -56,7 +56,7 @@ La interfaz modela un flujo simple de despliegue:
 
 La aplicación maneja cuatro conceptos principales persistidos como un único snapshot:
 
-- `Item`: unidad individual de trabajo con `id`, `title`, `description`, `type`, `priority` y `areas` (`front`, `back`, `app`).
+- `Item`: unidad individual de trabajo con `id`, `title`, `description`, `type`, `priority` y `areas` (`web`, `api`, `mobile`).
 - `Release`: agrupación de items con `id`, `name`, `description` e `items`.
 - `Environment`: ambiente de despliegue con `id`, `name`, `description`, `order`, `kind` (`pool`, `standard`, `production`) e `isFixed`.
 - `Deployment`: relación entre un item o release y un ambiente, con fecha de despliegue, snapshot de items y timestamps por item en releases desplegados (`itemDeploymentTimes`).
@@ -78,7 +78,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Validación básica para evitar nombres duplicados de releases y ambientes.
 - Rollback local si falla un guardado en Supabase.
 - Estado explícito de carga, guardado y error de persistencia en el dashboard.
-- Tags de alcance técnico por item (`front`, `back`, `app`) con persistencia en Supabase.
+- Tags de alcance técnico por item (`web`, `api`, `mobile`) con persistencia en Supabase, compatibilidad automática con snapshots viejos que todavía usen `front`, `back` o `app` y estilo visual plano: apagados en blanco y negro con alta transparencia, activos en una tinta intermedia de la paleta.
 - Tiempo relativo en ambientes (`hace X`) y tiempo por item dentro de releases desplegados.
 - Los items dentro de un release se pueden desenganchar con un icono `🔓`; si estaban dentro de un release desplegado, pasan a desplegarse como item individual en el mismo ambiente.
 - Al desenganchar desde releases no desplegados, el item vuelve a quedar disponible y reaparece en `Pool`.

@@ -267,6 +267,7 @@
                           :key="`${item.id}-${area}`"
                           class="item-area-tag"
                           :class="{ active: isAreaSelected(item, area) }"
+                          :style="getAreaTagStyle(area, isAreaSelected(item, area))"
                           @click.stop="handleToggleItemArea(item.id, area)"
                         >
                           {{ area }}
@@ -445,6 +446,7 @@
                             :key="`${item.id}-${area}`"
                             class="item-area-tag"
                             :class="{ active: isAreaSelected(item, area) }"
+                            :style="getAreaTagStyle(area, isAreaSelected(item, area))"
                             @click.stop="handleToggleItemArea(item.id, area)"
                           >
                             {{ area }}
@@ -528,6 +530,7 @@
                         :key="`${deployment.itemId}-${area}`"
                         class="item-area-tag"
                         :class="{ active: isAreaSelected(getItemById(deployment.itemId), area) }"
+                        :style="getAreaTagStyle(area, isAreaSelected(getItemById(deployment.itemId), area))"
                         @click.stop="handleToggleItemArea(deployment.itemId, area)"
                       >
                         {{ area }}
@@ -718,7 +721,45 @@ const creationActions = [
   { kind: 'hotfix', label: 'Nuevo hotfix', icon: '/hotfix.png' }
 ]
 
-const itemAreas = ['front', 'back', 'app']
+const itemAreaPalettes = {
+  web: {
+    background: '#007ACC',
+    secondary: '#1E1E1E',
+    accent: '#252526'
+  },
+  api: {
+    background: '#5C2D91',
+    secondary: '#854CC7',
+    accent: '#2D183F'
+  },
+  mobile: {
+    background: '#3DDC84',
+    secondary: '#073042',
+    accent: '#E6F4EA'
+  }
+}
+
+const withHexAlpha = (hex, alpha) => {
+  if (typeof hex !== 'string' || !hex.startsWith('#')) {
+    return hex
+  }
+
+  let normalizedHex = hex.slice(1)
+  if (normalizedHex.length === 3) {
+    normalizedHex = normalizedHex.split('').map(character => `${character}${character}`).join('')
+  }
+
+  if (normalizedHex.length !== 6) {
+    return hex
+  }
+
+  const normalizedAlpha = Math.round(Math.min(Math.max(alpha, 0), 1) * 255)
+  const alphaHex = normalizedAlpha.toString(16).padStart(2, '0').toUpperCase()
+
+  return `#${normalizedHex}${alphaHex}`
+}
+
+const itemAreas = Object.keys(itemAreaPalettes)
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' })
 
 const boardEnvironments = computed(() => {
@@ -939,6 +980,29 @@ const getItemMetaLabel = (item, dateValue = null) => {
 
 const isAreaSelected = (item, area) => {
   return Array.isArray(item?.areas) && item.areas.includes(area)
+}
+
+const getAreaTagStyle = (area, isActive) => {
+  const palette = itemAreaPalettes[area]
+  if (!palette) {
+    return {}
+  }
+
+  if (isActive) {
+    return {
+      background: withHexAlpha(palette.background, 0.16),
+      color: area === 'mobile' ? palette.secondary : palette.accent,
+      borderColor: withHexAlpha(palette.background, 0.32),
+      opacity: 0.9
+    }
+  }
+
+  return {
+    background: 'rgba(255, 255, 255, 0.18)',
+    color: 'rgba(15, 23, 42, 0.34)',
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    opacity: 0.48
+  }
 }
 
 const getDeploymentItemTime = (deployment, itemId) => {
@@ -2199,27 +2263,22 @@ onBeforeUnmount(() => {
 }
 
 .item-area-tag {
-  border: none;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #64748b;
   font-size: 0.68rem;
-  font-weight: 600;
-  padding: 3px 7px;
+  font-weight: 700;
+  padding: 4px 9px;
   text-transform: lowercase;
-  opacity: 0.55;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  letter-spacing: 0.01em;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 .item-area-tag:hover {
-  opacity: 0.85;
   transform: translateY(-1px);
 }
 
 .item-area-tag.active {
-  opacity: 1;
-  background: #cbd5e1;
-  color: #0f172a;
+  transform: translateY(-1px);
 }
 
 .deployment-date {

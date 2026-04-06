@@ -13,7 +13,24 @@ export const environmentKinds = {
 export const poolEnvironmentId = 'pool'
 export const poolEnvironmentName = 'Pool'
 
-const validAreas = ['front', 'back', 'app']
+const itemAreaAliases = {
+  front: 'web',
+  back: 'api',
+  app: 'mobile',
+  web: 'web',
+  api: 'api',
+  mobile: 'mobile'
+}
+
+export const validAreas = ['web', 'api', 'mobile']
+
+export const normalizeItemArea = area => {
+  if (typeof area !== 'string') {
+    return ''
+  }
+
+  return itemAreaAliases[area.trim().toLowerCase()] ?? ''
+}
 
 const fixedKindOrder = {
   [environmentKinds.pool]: 1,
@@ -412,7 +429,8 @@ export const addItemToDeployedRelease = (state, itemId, releaseId) => {
 }
 
 export const toggleItemAreaSelection = (state, itemId, area) => {
-  if (!validAreas.includes(area)) {
+  const normalizedArea = normalizeItemArea(area)
+  if (!validAreas.includes(normalizedArea)) {
     return { ok: false, reason: `❌ Área inválida: ${area}` }
   }
 
@@ -422,15 +440,15 @@ export const toggleItemAreaSelection = (state, itemId, area) => {
   }
 
   const currentAreas = Array.isArray(item.areas)
-    ? item.areas.filter(currentArea => validAreas.includes(currentArea))
+    ? [...new Set(item.areas.map(normalizeItemArea).filter(currentArea => validAreas.includes(currentArea)))]
     : []
 
-  if (currentAreas.includes(area)) {
-    item.areas = currentAreas.filter(currentArea => currentArea !== area)
+  if (currentAreas.includes(normalizedArea)) {
+    item.areas = currentAreas.filter(currentArea => currentArea !== normalizedArea)
     return { ok: true, item }
   }
 
-  item.areas = [...currentAreas, area]
+  item.areas = [...currentAreas, normalizedArea]
   return { ok: true, item }
 }
 
