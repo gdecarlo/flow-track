@@ -60,6 +60,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+@font-face {
+  font-family: 'Minimalist';
+  src: url('./assets/Minimalist-BF66d6c11b6b54d.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 /* ==========================================
    APLICACIÓN PRINCIPAL
    ========================================== */
@@ -98,11 +105,12 @@ onBeforeUnmount(() => {
 }
 
 .app-title {
+  font-family: 'Minimalist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #1e293b;
-  font-size: 1.75rem;
+  font-size: 3.75rem;
   font-weight: 700;
-  margin: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 10px;
+  background: rgba(0, 0, 0, 0.853);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

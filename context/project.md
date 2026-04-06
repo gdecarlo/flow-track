@@ -40,6 +40,7 @@ La interfaz modela un flujo simple de despliegue:
 
 - `src/main.js`: monta la aplicación Vue.
 - `src/App.vue`: layout principal con navbar, toggle de modo edición y carga del dashboard.
+- `src/App.vue`: layout principal con navbar, toggle de modo edición y carga del dashboard; registra la fuente local `src/assets/Minimalist-BF66d6c11b6b54d.otf` y la aplica solo al título de la app.
 - `src/components/Dashboard.vue`: concentra el rail de creación, los modales, la bandeja Pool, la grilla de ambientes, el modo edición visual y la coordinación de eventos de drag and drop.
 - `src/composables/useFlowTrackDomain.js`: expone el estado reactivo del dominio, inicializa el snapshot desde Supabase y persiste cada operación del tablero, incluido el borrado.
 - `src/domain/flowTrackDomain.js`: contiene reglas y utilidades del dominio para releases, items, ambientes, despliegues y borrado destructivo.
