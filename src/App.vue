@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
-  --type-display: 2.8rem;
+  --type-display: 3.8rem;
   --type-title: 1.9rem;
   --type-body: 1.0625rem;
   --type-meta: 0.9375rem;
