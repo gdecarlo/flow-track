@@ -2,7 +2,6 @@
   <div class="deployment-dashboard">
     <div v-if="isInitializing" class="dashboard-state-panel">
       <h2 class="dashboard-state-title">Cargando tablero</h2>
-      <p class="dashboard-state-copy">Recuperando el snapshot compartido desde Supabase.</p>
     </div>
 
     <div v-else-if="!isReady" class="dashboard-state-panel error-state">
@@ -12,34 +11,52 @@
     </div>
 
     <div v-else class="dashboard-container">
-      <aside class="action-rail" aria-label="Acciones de creación">
-        <button
-          v-for="action in creationActions"
-          :key="action.kind"
-          class="action-rail-btn"
-          :class="{ active: activeModal === action.kind }"
-          :disabled="isBusy"
-          :title="action.label"
-          @click="openCreationModal(action.kind)"
-        >
-          <img :src="action.icon" :alt="action.label" class="action-rail-icon" />
-          <span class="sr-only">{{ action.label }}</span>
-        </button>
-
-        <button
-          class="action-rail-btn action-rail-toggle"
-          :class="{ active: showPoolTray }"
-          :aria-pressed="showPoolTray"
-          :disabled="isBusy"
-          :title="showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool'"
-          @click="togglePoolTray"
-        >
-          <img src="/new.png" alt="Alternar Pool" class="action-rail-icon" />
-          <span class="sr-only">{{ showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool' }}</span>
-        </button>
-      </aside>
-
       <section class="board-shell">
+        <header class="board-toolbar">
+          <div class="board-intro">
+            
+          </div>
+
+          <div class="board-toolbar-actions">
+            <div ref="createMenuRef" class="create-menu">
+              <button
+                class="board-primary-action"
+                :class="{ active: isCreateMenuOpen }"
+                :aria-expanded="isCreateMenuOpen"
+                :disabled="isBusy"
+                type="button"
+                @click="toggleCreateMenu"
+              >
+                Crear
+              </button>
+
+              <div v-if="isCreateMenuOpen" class="create-menu-panel" role="menu" aria-label="Opciones de creación">
+                <button
+                  v-for="action in creationActions"
+                  :key="action.kind"
+                  class="create-menu-item"
+                  type="button"
+                  :disabled="isBusy"
+                  @click="selectCreationAction(action.kind)"
+                >
+                  <img :src="action.icon" alt="" class="create-menu-icon" aria-hidden="true" />
+                  <span class="create-menu-label">{{ action.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              class="board-secondary-action"
+              :aria-pressed="showPoolTray"
+              :disabled="isBusy"
+              type="button"
+              @click="togglePoolTray"
+            >
+              {{ showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool' }}
+            </button>
+          </div>
+        </header>
+
         <transition name="pool-tray-visibility">
           <div
             v-show="showPoolTray && poolEnvironment"
@@ -75,20 +92,6 @@
                     >
                       <h4>{{ release.name }}</h4>
                       <div v-if="props.isEditMode" class="entity-inline-actions">
-                        <button
-                          class="entity-icon-btn"
-                          type="button"
-                          title="Editar release (próximamente)"
-                          aria-label="Editar release (próximamente)"
-                          disabled
-                          @mousedown.stop
-                          @click.stop
-                        >
-                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
-                        </button>
                         <button
                           class="entity-icon-btn entity-icon-btn-delete"
                           type="button"
@@ -336,20 +339,6 @@
                       <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
                       <div v-if="props.isEditMode" class="entity-inline-actions">
                         <button
-                          class="entity-icon-btn"
-                          type="button"
-                          title="Editar release (próximamente)"
-                          aria-label="Editar release (próximamente)"
-                          disabled
-                          @mousedown.stop
-                          @click.stop
-                        >
-                          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                            <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M4.16699 15.833H6.52533L15.4163 6.94199C15.7468 6.61155 15.7468 6.07579 15.4163 5.74534L14.2547 4.58367C13.9242 4.25322 13.3884 4.25322 13.058 4.58367L4.16699 13.4747V15.833Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
-                        </button>
-                        <button
                           class="entity-icon-btn entity-icon-btn-delete"
                           type="button"
                           title="Eliminar release"
@@ -546,7 +535,7 @@
                 v-if="getOrderedDeployments(environment.id).length === 0"
                 class="empty-column-copy"
               >
-                Sin despliegues todavía.
+                - 
               </p>
             </div>
           </div>
@@ -695,6 +684,8 @@ const activeEnvironmentDropZoneId = ref('')
 const activeReleaseDropZone = ref({ type: '', id: '' })
 const activeModal = ref('')
 const showPoolTray = ref(true)
+const isCreateMenuOpen = ref(false)
+const createMenuRef = ref(null)
 
 const newItem = ref({
   title: '',
@@ -723,21 +714,27 @@ const creationActions = [
   { kind: 'hotfix', label: 'Nuevo hotfix', icon: '/hotfix.png' }
 ]
 
+const itemTypeLabels = {
+  feature: 'Feature',
+  fix: 'Fix',
+  hotfix: 'Hotfix'
+}
+
 const itemAreaPalettes = {
   web: {
-    background: '#007ACC',
-    secondary: '#1E1E1E',
-    accent: '#252526'
+    background: '#2563EB',
+    secondary: '#1E3A8A',
+    accent: '#1D4ED8'
   },
   api: {
-    background: '#5C2D91',
-    secondary: '#854CC7',
-    accent: '#2D183F'
+    background: '#475569',
+    secondary: '#334155',
+    accent: '#334155'
   },
   mobile: {
-    background: '#3DDC84',
-    secondary: '#073042',
-    accent: '#E6F4EA'
+    background: '#0F766E',
+    secondary: '#134E4A',
+    accent: '#115E59'
   }
 }
 
@@ -975,9 +972,13 @@ const getItemCreatedAt = item => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+const getItemTypeLabel = item => {
+  return itemTypeLabels[item?.type] ?? 'Item'
+}
+
 const getItemMetaLabel = (item, dateValue = null) => {
   const timestamp = dateValue || getItemCreatedAt(item)
-  return formatRelativeTime(timestamp)
+  return `${getItemTypeLabel(item)} · ${formatRelativeTime(timestamp)}`
 }
 
 const isAreaSelected = (item, area) => {
@@ -1000,10 +1001,10 @@ const getAreaTagStyle = (area, isActive) => {
   }
 
   return {
-    background: 'rgba(255, 255, 255, 0.18)',
-    color: 'rgba(15, 23, 42, 0.34)',
-    borderColor: 'rgba(15, 23, 42, 0.08)',
-    opacity: 0.48
+    background: 'rgba(255, 255, 255, 0.92)',
+    color: 'rgba(71, 85, 105, 0.92)',
+    borderColor: 'rgba(203, 213, 225, 0.96)',
+    opacity: 1
   }
 }
 
@@ -1111,11 +1112,31 @@ const resetModalForms = () => {
   resetNewEnvironmentForm()
 }
 
+const closeCreateMenu = () => {
+  isCreateMenuOpen.value = false
+}
+
+const toggleCreateMenu = () => {
+  if (!ensureInteractive()) {
+    return
+  }
+
+  pendingDeletion.value = null
+  closeItemEdition()
+  isCreateMenuOpen.value = !isCreateMenuOpen.value
+}
+
+const selectCreationAction = modalKind => {
+  closeCreateMenu()
+  openCreationModal(modalKind)
+}
+
 const openCreationModal = modalKind => {
   if (!ensureInteractive()) {
     return
   }
 
+  closeCreateMenu()
   closeItemEdition()
 
   if (modalKind === 'feature' || modalKind === 'hotfix') {
@@ -1139,6 +1160,7 @@ const togglePoolTray = () => {
     return
   }
 
+  closeCreateMenu()
   showPoolTray.value = !showPoolTray.value
 }
 
@@ -1155,6 +1177,7 @@ const openItemEdition = item => {
     return
   }
 
+  closeCreateMenu()
   pendingDeletion.value = null
   pendingItemEdition.value = {
     id: item.id,
@@ -1198,6 +1221,7 @@ const openDeleteConfirmation = (type, id, label) => {
     return
   }
 
+  closeCreateMenu()
   closeItemEdition()
 
   pendingDeletion.value = {
@@ -1581,6 +1605,16 @@ const handleDocumentDragEnd = () => {
   clearDragState()
 }
 
+const handleDocumentPointerDown = event => {
+  if (!isCreateMenuOpen.value || !createMenuRef.value) {
+    return
+  }
+
+  if (!createMenuRef.value.contains(event.target)) {
+    closeCreateMenu()
+  }
+}
+
 const handleDocumentKeydown = event => {
   if (event.key !== 'Escape') {
     return
@@ -1597,7 +1631,13 @@ const handleDocumentKeydown = event => {
   }
 
   if (activeModal.value) {
+    closeCreateMenu()
     closeCreationModal()
+    return
+  }
+
+  if (isCreateMenuOpen.value) {
+    closeCreateMenu()
   }
 }
 
@@ -1608,23 +1648,23 @@ onMounted(async () => {
   }
 
   document.addEventListener('dragend', handleDocumentDragEnd)
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
   document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('dragend', handleDocumentDragEnd)
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
 </script>
 
 <style scoped>
 .deployment-dashboard {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-body, 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
   margin: 0;
-  padding: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(22, 163, 74, 0.08), transparent 28%),
-    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px 24px 28px;
+  background: var(--surface-canvas, #f6f7f4);
   min-height: calc(100vh - 64px);
   width: 100%;
   box-sizing: border-box;
@@ -1634,155 +1674,216 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  padding: 28px;
-  border-radius: 20px;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  gap: 14px;
+  padding: 32px;
+  border-radius: var(--radius-lg, 24px);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-panel, #ffffff);
 }
 
 .dashboard-state-title {
   margin: 0;
-  color: #0f172a;
+  color: var(--text-strong, #0f172a);
+  font-size: var(--type-title, 1.25rem);
+  font-weight: 600;
 }
 
 .dashboard-state-copy {
   margin: 0;
-  color: #475569;
+  color: var(--text-secondary, #475569);
 }
 
 .state-action-btn {
   border: none;
   border-radius: 999px;
   padding: 10px 18px;
-  background: #0f172a;
-  color: white;
+  background: var(--accent, #15803d);
+  color: #ffffff;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .error-state {
-  border: 1px solid #fecaca;
+  border-color: rgba(185, 28, 28, 0.18);
 }
 
 .dashboard-container {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 20px;
+  display: block;
   min-height: calc(100vh - 150px);
   width: 100%;
 }
 
-.action-rail {
+.board-shell {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 22px 12px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(12px);
+  gap: 24px;
+  padding: 28px;
+  border-radius: var(--radius-lg, 24px);
+  background: var(--surface-panel, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
 }
 
-.action-rail-btn {
-  width: 52px;
-  height: 52px;
-  border: 0;
-  border-radius: 16px;
-  background: transparent;
+.board-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.board-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 680px;
+}
+
+.board-kicker {
+  margin: 0;
+  color: var(--text-muted, #64748b);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.board-title {
+  margin: 0;
+  color: var(--text-strong, #0f172a);
+  font-size: var(--type-title, 1.9rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.board-copy {
+  margin: 0;
+  color: var(--text-secondary, #475569);
+  font-size: var(--type-body, 1.0625rem);
+  line-height: 1.5;
+}
+
+.board-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.create-menu {
+  position: relative;
+}
+
+.board-primary-action,
+.board-secondary-action {
+  min-height: 48px;
+  border-radius: 999px;
+  padding: 0 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid var(--border-strong, #cbd5e1);
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.action-rail-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  background: rgba(15, 23, 42, 0.06);
+.board-primary-action {
+  background: var(--accent, #15803d);
+  border-color: var(--accent, #15803d);
+  color: #ffffff;
 }
 
-.action-rail-btn.active {
-  background: #4ade80;
-  box-shadow: 0 12px 28px rgba(74, 222, 128, 0.35);
+.board-primary-action:hover:not(:disabled),
+.board-primary-action.active {
+  background: var(--accent-strong, #166534);
+  border-color: var(--accent-strong, #166534);
 }
 
-.action-rail-btn:disabled {
-  opacity: 0.45;
+.board-secondary-action {
+  background: var(--surface-panel, #ffffff);
+  color: var(--text-secondary, #475569);
+}
+
+.board-secondary-action:hover:not(:disabled) {
+  border-color: var(--text-secondary, #475569);
+  color: var(--text-primary, #1e293b);
+}
+
+.board-primary-action:disabled,
+.board-secondary-action:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.action-rail-toggle {
-  margin-top: 4px;
-  position: relative;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(15, 23, 42, 0.04);
-}
-
-.action-rail-toggle::before {
-  content: '';
+.create-menu-panel {
   position: absolute;
-  top: -12px;
-  left: 10px;
-  right: 10px;
-  height: 1px;
-  background: rgba(148, 163, 184, 0.34);
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 240px;
+  padding: 10px;
+  border-radius: var(--radius-md, 18px);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-panel, #ffffff);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
 }
 
-.action-rail-toggle .action-rail-icon {
-  transition: transform 0.22s ease, opacity 0.22s ease;
+.create-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm, 12px);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary, #1e293b);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
 }
 
-.action-rail-toggle:not(.active) {
-  opacity: 0.82;
+.create-menu-item:hover:not(:disabled) {
+  background: var(--surface-subtle, #f8fafc);
 }
 
-.action-rail-toggle.active {
-  background: #0f172a;
-  border-color: rgba(15, 23, 42, 0.6);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+.create-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.action-rail-toggle.active .action-rail-icon {
-  transform: rotate(45deg);
-}
-
-.action-rail-icon {
-  width: 24px;
-  height: 24px;
+.create-menu-icon {
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
-.board-shell {
-  min-width: 0;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.66);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.create-menu-label {
+  line-height: 1.3;
 }
 
 .environment-column {
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 24px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  background: var(--surface-panel, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-lg, 24px);
 }
 
 .pool-tray {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px 18px;
+  gap: 16px;
+  padding: 20px 22px 22px;
   overflow: hidden;
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(240, 253, 244, 0.82) 0%, rgba(255, 255, 255, 0.92) 100%);
-  border: 1px solid rgba(187, 247, 208, 0.9);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 20px rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-md, 18px);
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .pool-tray-visibility-enter-active,
@@ -1815,15 +1916,16 @@ onBeforeUnmount(() => {
 
 .pool-tray-title {
   margin: 0;
-  color: #0f172a;
-  font-size: 1rem;
-  font-weight: 700;
+  color: var(--text-strong, #0f172a);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
 }
 
 .pool-tray-copy {
   margin: 0;
-  color: #475569;
-  font-size: 0.8rem;
+  color: var(--text-secondary, #475569);
+  font-size: 1rem;
   max-width: 620px;
 }
 
@@ -1835,13 +1937,13 @@ onBeforeUnmount(() => {
 
 .pool-tray-body.has-two-groups .pool-items-section {
   padding-left: 16px;
-  border-left: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .pool-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -1874,46 +1976,44 @@ onBeforeUnmount(() => {
 
 .empty-inline-copy {
   margin: 0;
-  border: 1px dashed rgba(148, 163, 184, 0.28);
-  border-radius: 14px;
-  padding: 12px;
-  color: #64748b;
-  font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-sm, 12px);
+  padding: 16px 18px;
+  color: var(--text-secondary, #475569);
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--surface-subtle, #f8fafc);
 }
 
 .environment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px;
+  gap: 20px;
   align-items: start;
 }
 
 .environment-panel {
   min-width: 0;
   min-height: 320px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .environment-column.is-production {
-  border-color: rgba(148, 163, 184, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.32), 0 10px 24px rgba(15, 23, 42, 0.06);
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .environment-column.is-production.is-artifact-drop-over {
-  border-color: rgba(15, 23, 42, 0.95);
-  background: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
-  box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.18), 0 18px 34px rgba(15, 23, 42, 0.14);
-  transform: translateY(-2px);
+  border-color: var(--accent, #15803d);
+  background: rgba(220, 252, 231, 0.32);
 }
 
 .environment-column.is-production.is-artifact-drop-over .environment-header {
-  background: rgba(15, 23, 42, 0.06);
-  border-bottom-color: rgba(15, 23, 42, 0.18);
+  background: rgba(220, 252, 231, 0.5);
+  border-bottom-color: rgba(21, 128, 61, 0.16);
 }
 
 .environment-column.is-production.is-artifact-drop-over .environment-title {
-  color: #020617;
+  color: var(--text-strong, #0f172a);
 }
 
 .environment-header {
@@ -1921,8 +2021,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 18px 18px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
   cursor: grab;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -1936,8 +2036,8 @@ onBeforeUnmount(() => {
 }
 
 .environment-header.is-drag-over {
-  background: #eff6ff;
-  border-bottom-color: #93c5fd;
+  background: var(--surface-subtle, #f8fafc);
+  border-bottom-color: var(--border-strong, #cbd5e1);
 }
 
 .environment-title-wrap {
@@ -1948,10 +2048,11 @@ onBeforeUnmount(() => {
 
 .environment-title {
   margin: 0;
-  color: #0f172a;
-  font-size: 3rem;
-  font-weight: 700;
-  font-family: 'Minimalist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-strong, #0f172a);
+  font-size: 1.8rem;
+  font-weight: 600;
+  font-family: var(--font-body, 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+  line-height: 1.05;
 }
 
 .environment-chip {
@@ -1970,7 +2071,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 18px;
+  padding: 20px;
 }
 
 .environment-panel-content {
@@ -1979,34 +2080,34 @@ onBeforeUnmount(() => {
 
 .empty-column-copy {
   margin: 0;
-  border: 1px dashed #cbd5e1;
-  border-radius: 18px;
-  padding: 18px;
-  color: #64748b;
-  font-size: 0.9rem;
+  border: 1px dashed var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 18px);
+  padding: 20px;
+  color: var(--text-muted, #475569);
+  font-size: 0.95rem;
+  font-weight: 300;
   text-align: center;
-  background: rgba(248, 250, 252, 0.9);
+  background: var(--surface-subtle, #f8fafc);
 }
 
 .release-card,
 .deployed-release {
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 14px;
-  background: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 18px);
+  padding: 16px;
+  background: var(--surface-panel, #ffffff);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .release-card:hover,
 .deployed-release:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .release-card.drag-over,
 .deployed-release.drag-over {
   border-width: 2px;
-  border-color: #475569;
+  border-color: var(--text-secondary, #475569);
 }
 
 .release-header {
@@ -2019,23 +2120,23 @@ onBeforeUnmount(() => {
 .release-header h4,
 .deployment-header h4 {
   margin: 0;
-  color: #0f172a;
-  font-size: 0.92rem;
+  color: var(--text-strong, #0f172a);
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .release-description {
   margin: 6px 0 0;
-  color: #64748b;
-  font-size: 0.82rem;
+  color: var(--text-muted, #64748b);
+  font-size: var(--type-meta, 0.875rem);
 }
 
 .items-container,
 .deployment-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .item-card,
@@ -2044,29 +2145,17 @@ onBeforeUnmount(() => {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #f8fafc;
-  border: 1px solid transparent;
-  border-radius: 18px;
-  padding: 12px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  background: var(--surface-panel, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 16px;
+  padding: 14px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .item-card::before,
 .deployed-item::before,
 .deployed-item-detail::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  bottom: 6px;
-  width: 34%;
-  background-image: var(--item-watermark-icon);
-  background-repeat: no-repeat;
-  background-position: center right;
-  background-size: auto 94%;
-  opacity: 0.035;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .item-card > *,
@@ -2079,7 +2168,7 @@ onBeforeUnmount(() => {
 .item-card:hover,
 .deployed-item:hover,
 .deployed-item-detail:hover {
-  transform: translateY(-2px);
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .item-card,
@@ -2088,19 +2177,16 @@ onBeforeUnmount(() => {
 }
 
 .item-feature {
-  --item-watermark-icon: url('/new-feature.png');
-  border-color: rgba(147, 197, 253, 0.7);
+  border-color: var(--border-subtle, #e2e8f0);
 }
 
 .item-fix {
-  --item-watermark-icon: url('/new-feature.png');
-  border-color: rgba(134, 239, 172, 0.7);
+  border-color: var(--border-subtle, #e2e8f0);
 }
 
 .item-hotfix {
-  --item-watermark-icon: url('/hotfix.png');
-  border-color: rgba(252, 165, 165, 0.75);
-  background: linear-gradient(180deg, rgba(254, 242, 242, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(254, 242, 242, 0.72);
 }
 
 .item-header-row {
@@ -2138,20 +2224,21 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   margin-left: 4px;
+  opacity: 0.78;
 }
 
 .entity-icon-btn {
   width: 22px;
   height: 22px;
-  border: none;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 6px;
-  background: rgba(226, 232, 240, 0.88);
-  color: #64748b;
+  background: var(--surface-panel, #ffffff);
+  color: var(--text-muted, #64748b);
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .entity-icon-btn svg {
@@ -2160,9 +2247,9 @@ onBeforeUnmount(() => {
 }
 
 .entity-icon-btn:hover:not(:disabled) {
-  background: #cbd5e1;
-  color: #0f172a;
-  transform: translateY(-1px);
+  background: var(--surface-subtle, #f8fafc);
+  border-color: var(--border-strong, #cbd5e1);
+  color: var(--text-primary, #1e293b);
 }
 
 .entity-icon-btn:disabled {
@@ -2171,12 +2258,13 @@ onBeforeUnmount(() => {
 }
 
 .entity-icon-btn-delete {
-  background: rgba(254, 226, 226, 0.88);
-  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(254, 242, 242, 0.72);
+  color: var(--danger, #b91c1c);
 }
 
 .entity-icon-btn-delete:hover:not(:disabled) {
-  background: #fecaca;
+  background: var(--danger-soft, #fee2e2);
   color: #991b1b;
 }
 
@@ -2219,8 +2307,8 @@ onBeforeUnmount(() => {
 }
 
 .item-detach-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--surface-subtle, #f8fafc);
+  color: var(--text-primary, #1e293b);
 }
 
 .item-detach-icon {
@@ -2232,17 +2320,17 @@ onBeforeUnmount(() => {
 .item-title,
 .deployed-item-title {
   font-weight: 600;
-  color: #0f172a;
-  font-size: 0.9rem;
+  color: var(--text-strong, #0f172a);
+  font-size: 1rem;
   line-height: 1.4;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   overflow-wrap: anywhere;
 }
 
 .item-description {
-  color: #64748b;
-  font-size: 0.78rem;
-  margin: 0 0 8px;
+  color: var(--text-secondary, #475569);
+  font-size: 0.9rem;
+  margin: 0 0 10px;
   line-height: 1.45;
 }
 
@@ -2264,27 +2352,23 @@ onBeforeUnmount(() => {
 }
 
 .item-area-tag {
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 10px;
   text-transform: lowercase;
   letter-spacing: 0.01em;
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 .item-area-tag:hover {
-  transform: translateY(-1px);
-}
-
-.item-area-tag.active {
-  transform: translateY(-1px);
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .deployment-date {
-  font-size: 0.78rem;
-  color: #475569;
+  font-size: 0.9rem;
+  color: var(--text-muted, #64748b);
   white-space: nowrap;
 }
 
@@ -2312,16 +2396,16 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.42);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.28);
 }
 
 .creation-modal {
-  width: min(480px, 100%);
-  border-radius: 28px;
-  background: white;
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
-  padding: 24px;
+  width: min(540px, 100%);
+  border-radius: var(--radius-lg, 24px);
+  background: var(--surface-panel, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+  padding: 28px;
 }
 
 .creation-modal-header {
@@ -2329,28 +2413,30 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .creation-modal-kicker {
   margin: 0 0 8px;
-  color: #16a34a;
-  font-size: 0.76rem;
-  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  font-size: var(--type-micro, 0.75rem);
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .creation-modal-title {
   margin: 0;
-  color: #0f172a;
-  font-size: 1.5rem;
+  color: var(--text-strong, #0f172a);
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.15;
 }
 
 .modal-close-btn {
-  border: none;
-  background: #f1f5f9;
-  color: #475569;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-subtle, #f8fafc);
+  color: var(--text-secondary, #475569);
   width: 36px;
   height: 36px;
   border-radius: 999px;
@@ -2362,47 +2448,47 @@ onBeforeUnmount(() => {
 .creation-modal-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .field-label {
-  color: #334155;
-  font-size: 0.85rem;
-  font-weight: 700;
+  color: var(--text-secondary, #475569);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .text-input {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong, #cbd5e1);
   border-radius: 16px;
-  padding: 14px 16px;
-  font-size: 1rem;
-  color: #0f172a;
-  background: #fff;
+  padding: 15px 16px;
+  font-size: 1.02rem;
+  color: var(--text-strong, #0f172a);
+  background: var(--surface-panel, #ffffff);
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   box-sizing: border-box;
 }
 
 .text-input:focus {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14);
+  border-color: var(--accent, #15803d);
+  background: #ffffff;
 }
 
 .text-input.error {
-  border-color: #ef4444;
+  border-color: var(--danger, #b91c1c);
 }
 
 .error-message {
-  color: #b91c1c;
-  font-size: 0.84rem;
+  color: var(--danger, #b91c1c);
+  font-size: 0.9rem;
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .primary-btn,
@@ -2410,24 +2496,26 @@ onBeforeUnmount(() => {
 .danger-btn {
   border: none;
   border-radius: 999px;
-  padding: 11px 18px;
-  font-weight: 700;
+  min-height: 44px;
+  padding: 0 18px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .primary-btn {
-  background: #16a34a;
-  color: white;
+  background: var(--accent, #15803d);
+  color: #ffffff;
 }
 
 .secondary-btn {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--surface-muted, #f1f5f9);
+  color: var(--text-primary, #1e293b);
+  border: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .danger-btn {
-  background: #dc2626;
-  color: white;
+  background: var(--danger, #b91c1c);
+  color: #ffffff;
 }
 
 .primary-btn:disabled,
@@ -2443,12 +2531,12 @@ onBeforeUnmount(() => {
 }
 
 .delete-modal-kicker {
-  color: #dc2626;
+  color: var(--danger, #b91c1c);
 }
 
 .delete-confirmation-copy {
   margin: 0;
-  color: #475569;
+  color: var(--text-secondary, #475569);
   font-size: 0.94rem;
   line-height: 1.6;
 }
@@ -2473,6 +2561,19 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1350px) {
+  .board-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .board-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .environment-title {
+    font-size: 1.65rem;
+  }
+
   .pool-tray-body {
     grid-template-columns: 1fr;
   }
@@ -2481,7 +2582,7 @@ onBeforeUnmount(() => {
     padding-left: 0;
     padding-top: 14px;
     border-left: none;
-    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    border-top: 1px solid var(--border-subtle, #e2e8f0);
   }
 
   .environment-grid {
@@ -2490,13 +2591,36 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 920px) {
-  .dashboard-container {
-    grid-template-columns: 1fr;
+  .deployment-dashboard {
+    padding: 16px;
   }
 
-  .action-rail {
-    flex-direction: row;
-    justify-content: center;
+  .board-shell {
+    padding: 22px;
+  }
+
+  .board-title {
+    font-size: 1.6rem;
+  }
+
+  .board-copy {
+    font-size: 0.95rem;
+  }
+
+  .board-toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .create-menu,
+  .board-primary-action,
+  .board-secondary-action {
+    width: 100%;
+  }
+
+  .create-menu-panel {
+    left: 0;
+    right: auto;
   }
 
   .environment-grid {
@@ -2505,16 +2629,20 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .deployment-dashboard {
-    padding: 16px;
-  }
-
   .creation-modal-backdrop {
     padding: 16px;
   }
 
   .creation-modal {
     padding: 20px;
+  }
+
+  .pool-tray {
+    padding: 18px;
+  }
+
+  .environment-title {
+    font-size: 1.45rem;
   }
 }
 </style>

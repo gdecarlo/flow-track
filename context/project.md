@@ -118,14 +118,16 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 ## UI actual
 
 - Diseño claro y orientado a dashboard.
-- Navbar superior con el nombre Flow Track, el último guardado inline y un toggle de `Modo edición` alineado a la derecha.
-- El texto `Último guardado ...` se muestra inline junto al título `Flow Track` en la navbar.
-- El texto `Último guardado ...` usa la misma familia tipográfica que los items, manteniendo el tamaño actual.
-- Rail lateral vertical con iconos para `Nuevo release`, `Nuevo feature`, `Nuevo ambiente` y `Nuevo hotfix`.
+- La app ahora expone tokens visuales base desde `App.vue` para tipografía, color, contraste, radios y jerarquía reutilizable.
+- Navbar superior más sobria, con marca, subtítulo de contexto, metadata de último guardado y toggle de `Modo edición` como acción secundaria.
+- El tablero reemplazó el rail lateral por un header con una sola acción principal `Crear` y disclosure progresivo mediante menú.
 - Modales centrados con overlay para las altas.
 - En modo edición, cada item y cada release visible muestran iconos inline de editar y eliminar junto al título; los items ya permiten editar inline su nombre con guardado persistido y eliminar abre un modal de advertencia.
 - Bandeja superior de Pool para origen de releases e items, y debajo una grilla desktop de ambientes sin scroll horizontal.
-- Badges visuales por tipo de item: feature, fix y hotfix.
+- La UI redujo sombras, gradientes y elementos decorativos para priorizar spacing, contraste tipográfico y fondos neutros.
+- La metadata de item ahora expone también el tipo (`Feature`, `Fix`, `Hotfix`) para no depender solo del color como indicador.
+- La escala tipográfica volvió a crecer en navbar, título de tablero, títulos de ambiente, CTAs y modales para recuperar presencia visual sin volver al ruido previo.
+- Los estados vacíos ahora usan el mismo lenguaje de superficie sutil y contraste del sistema, en lugar de verse como placeholders demasiado débiles.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
 - En items dentro de release, la acción de desenganche usa el icono `unlocked.png`, queda alineada al extremo derecho del header y solo se muestra en modo edición.
 - Las tarjetas de item ya no usan sombra; mantienen solo borde, color y desplazamiento sutil al hover.

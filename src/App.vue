@@ -26,15 +26,15 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app">
-    <!-- Navbar minimalista -->
     <nav class="navbar">
       <div class="navbar-container">
         <div class="brand-group">
           <h1 class="app-title">Flow Track</h1>
-          <span v-if="lastSavedLabel" class="last-saved-inline">{{ lastSavedLabel }}</span>
+          <p class="app-subtitle">Arrastrá desde el Pool hacia un ambiente</p>
         </div>
 
         <div class="navbar-actions">
+          <span v-if="lastSavedLabel" class="last-saved-inline">{{ lastSavedLabel }}</span>
           <button
             class="edit-mode-toggle"
             :class="{ active: isEditMode }"
@@ -51,8 +51,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </nav>
-    
-    <!-- Contenido principal -->
+
     <main class="main-content">
       <Dashboard :is-edit-mode="isEditMode" />
     </main>
@@ -72,18 +71,40 @@ onBeforeUnmount(() => {
    ========================================== */
 
 .app {
+  --font-display: 'Minimalist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-body: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --surface-canvas: #f6f7f4;
+  --surface-panel: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-strong: #0f172a;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --accent: #15803d;
+  --accent-strong: #166534;
+  --accent-soft: #dcfce7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --type-display: 2.8rem;
+  --type-title: 1.9rem;
+  --type-body: 1.0625rem;
+  --type-meta: 0.9375rem;
+  --type-micro: 0.75rem;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-body);
 }
 
-/* ==========================================
-   NAVBAR
-   ========================================== */
-
 .navbar {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -93,127 +114,107 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 0 24px;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  height: 64px;
+  gap: 20px;
+  min-height: 88px;
 }
 
 .brand-group {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
 }
 
 .app-title {
-  font-family: 'Minimalist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #1e293b;
-  font-size: 3.75rem;
-  font-weight: 700;
-  margin: 10px;
-  background: rgba(0, 0, 0, 0.853);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--text-strong);
+  font-size: var(--type-display);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+}
+
+.app-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-body);
+  line-height: 1.4;
 }
 
 .last-saved-inline {
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 500;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  gap: 18px;
 }
 
 .edit-mode-toggle {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(248, 250, 252, 0.96);
-  color: #334155;
-  height: 40px;
-  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  height: 44px;
+  padding: 0 16px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .edit-mode-toggle:hover {
-  transform: translateY(-1px);
-  border-color: rgba(100, 116, 139, 0.55);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .edit-mode-toggle.active {
-  background: #0f172a;
-  color: #f8fafc;
-  border-color: rgba(15, 23, 42, 0.88);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  background: var(--surface-subtle);
+  color: var(--text-strong);
+  border-color: var(--text-primary);
 }
 
 .edit-mode-toggle-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .edit-mode-toggle-label {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--type-meta);
+  font-weight: 600;
 }
-
-.status-indicator {
-  color: #10b981;
-  font-size: 0.75rem;
-  animation: pulse 2s infinite;
-}
-
-.status-text {
-  color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ==========================================
-   CONTENIDO PRINCIPAL
-   ========================================== */
 
 .main-content {
   width: 100%;
   padding: 0;
 }
 
-/* ==========================================
-   RESPONSIVE
-   ========================================== */
-
 @media (max-width: 768px) {
   .navbar-container {
     padding: 0 16px;
-    height: 56px;
-  }
-  
-  .app-title {
-    font-size: 1.5rem;
+    min-height: 72px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
-  .brand-group {
-    gap: 8px;
+  .app-title {
+    font-size: 2rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.875rem;
   }
 
   .last-saved-inline {
-    font-size: 0.75rem;
+    font-size: var(--type-micro);
   }
 
   .edit-mode-toggle {
@@ -224,28 +225,10 @@ onBeforeUnmount(() => {
   .edit-mode-toggle-label {
     font-size: 0.78rem;
   }
-  
-  .status-text {
-    display: none;
+
+  .navbar-actions {
+    width: 100%;
+    justify-content: space-between;
   }
-}
-
-/* ==========================================
-   UTILIDADES GLOBALES
-   ========================================== */
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
 }
 </style>
