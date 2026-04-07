@@ -127,7 +127,8 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Bandeja superior de Pool para origen de releases e items, y debajo una grilla desktop de ambientes sin scroll horizontal.
 - Badges visuales por tipo de item: feature, fix y hotfix.
 - Tarjetas de item con estructura visual fija: slot superior para `hotfix`, título con wrap, descripción y footer de chips.
-- En items dentro de release, la acción de desenganche usa el SVG `public/lock-unlocked.svg` y queda alineada al extremo derecho del header.
+- En items dentro de release, la acción de desenganche usa el icono `unlocked.png`, queda alineada al extremo derecho del header y solo se muestra en modo edición.
+- Las tarjetas de item ya no usan sombra; mantienen solo borde, color y desplazamiento sutil al hover.
 - Contenedores de release con borde gris claro y radio para delimitar grupos con bajo peso visual.
 - Los releases disponibles (no desplegados) mantienen el mismo lenguaje visual que los releases en ambientes y no muestran contador de cantidad de items.
 - Durante drag sobre releases, el estado de drop target realza solo el borde (sin fondo verde), con trazo más oscuro y más grueso, aplicado sobre toda la superficie del release.

@@ -175,6 +175,7 @@
                             </template>
                           </div>
                           <button
+                            v-if="props.isEditMode"
                             class="item-detach-btn"
                             title="Desenganchar del release"
                             @click.stop="handleDetachItem(item.id, release.id)"
@@ -431,6 +432,7 @@
                           </template>
                         </div>
                         <button
+                          v-if="props.isEditMode"
                           class="item-detach-btn"
                           title="Desenganchar del release"
                           @click.stop="handleDetachItem(item.id, deployment.itemId, deployment.environmentId)"
@@ -2046,8 +2048,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 18px;
   padding: 12px;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .item-card::before,
@@ -2078,7 +2079,6 @@ onBeforeUnmount(() => {
 .item-card:hover,
 .deployed-item:hover,
 .deployed-item-detail:hover {
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
   transform: translateY(-2px);
 }
 
