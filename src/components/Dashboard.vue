@@ -68,29 +68,28 @@
             <div class="pool-tray-header">
               <div>
                 <h2 class="pool-tray-title">Pool</h2>
-                <p class="pool-tray-copy">Todo lo nuevo aparece acá y desde acá se distribuye al resto de ambientes.</p>
+                <p class="pool-tray-copy">Todo lo nuevo aparece acá y desde acá se distribuye al resto de ambientes. Usá <kbd>Shift</kbd> + rueda para desplazarte.</p>
               </div>
             </div>
 
-            <div class="pool-tray-body" :class="{ 'has-two-groups': poolReleases.length > 0 && poolItems.length > 0 }">
-              <div class="pool-section">
-                <div v-if="poolReleases.length > 0" class="pool-release-grid">
+            <div class="pool-tray-body">
+              <div v-if="poolArtifacts.length > 0" class="pool-artifact-flow">
+                <template v-for="artifact in poolArtifacts" :key="artifact.id">
                   <div
-                    v-for="release in poolReleases"
-                    :key="release.id"
+                    v-if="artifact.kind === 'release'"
                     class="release-card available-release pool-release-card"
-                    :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === release.id }"
-                    @dragover.prevent="handleReleaseDragOver($event, 'release', release.id)"
-                    @drop="handleDropOnRelease($event, release.id)"
+                    :class="{ 'drag-over': activeReleaseDropZone.type === 'release' && activeReleaseDropZone.id === artifact.entity.id }"
+                    @dragover.prevent="handleReleaseDragOver($event, 'release', artifact.entity.id)"
+                    @drop="handleDropOnRelease($event, artifact.entity.id)"
                   >
                     <div
                       class="release-header draggable-item"
                       :data-type="'release'"
-                      :data-id="release.id"
+                      :data-id="artifact.entity.id"
                       :draggable="!isBusy"
                       @dragstart="handleDragStart"
                     >
-                      <h4>{{ release.name }}</h4>
+                      <h4>{{ getDisplayReleaseName(artifact.entity) }}</h4>
                       <div v-if="props.isEditMode" class="entity-inline-actions">
                         <button
                           class="entity-icon-btn entity-icon-btn-delete"
@@ -99,7 +98,7 @@
                           aria-label="Eliminar release"
                           :disabled="isBusy"
                           @mousedown.stop
-                          @click.stop="openDeleteConfirmation('release', release.id, release.name)"
+                          @click.stop="openDeleteConfirmation('release', artifact.entity.id, artifact.entity.name)"
                         >
                           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -110,15 +109,15 @@
                       </div>
                     </div>
 
-                    <div v-if="getAvailableItemsForRelease(release).length > 0" class="items-container pool-release-items">
+                    <div v-if="getAvailableItemsForRelease(artifact.entity).length > 0" class="items-container pool-release-items">
                       <div
-                        v-for="item in getAvailableItemsForRelease(release)"
+                        v-for="item in getAvailableItemsForRelease(artifact.entity)"
                         :key="item.id"
                         class="item-card draggable-item pool-item-card"
                         :class="`item-${item.type}`"
                         :data-type="'item'"
                         :data-id="item.id"
-                        :data-release-id="release.id"
+                        :data-release-id="artifact.entity.id"
                         :draggable="!isBusy && !isEditingItem(item.id)"
                         @dragstart="handleDragStart"
                       >
@@ -143,7 +142,7 @@
                               </form>
                             </template>
                             <template v-else>
-                              <p class="item-title">{{ item.title }}</p>
+                              <p class="item-title">{{ getDisplayItemTitle(item) }}</p>
                               <div v-if="props.isEditMode" class="entity-inline-actions">
                                 <button
                                   class="entity-icon-btn"
@@ -181,7 +180,7 @@
                             v-if="props.isEditMode"
                             class="item-detach-btn"
                             title="Desenganchar del release"
-                            @click.stop="handleDetachItem(item.id, release.id)"
+                            @click.stop="handleDetachItem(item.id, artifact.entity.id)"
                           >
                             <img src="/unlocked.png" alt="Desenganchar item" class="item-detach-icon" />
                           </button>
@@ -190,26 +189,19 @@
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <p v-else class="empty-inline-copy">Sin releases.</p>
-              </div>
-
-              <div class="pool-section pool-items-section">
-                <div v-if="poolItems.length > 0" class="pool-item-grid">
                   <div
-                    v-for="item in poolItems"
-                    :key="item.id"
+                    v-else
                     class="item-card draggable-item pool-item-card"
-                    :class="`item-${item.type}`"
+                    :class="`item-${artifact.entity.type}`"
                     :data-type="'item'"
-                    :data-id="item.id"
-                    :draggable="!isBusy && !isEditingItem(item.id)"
+                    :data-id="artifact.entity.id"
+                    :draggable="!isBusy && !isEditingItem(artifact.entity.id)"
                     @dragstart="handleDragStart"
                   >
                     <div class="item-header-row compact-item-header-row">
-                      <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(item.id) }">
-                        <template v-if="isEditingItem(item.id)">
+                      <div class="item-header-main" :class="{ 'is-inline-editing': isEditingItem(artifact.entity.id) }">
+                        <template v-if="isEditingItem(artifact.entity.id)">
                           <form class="inline-edit-form" @submit.prevent="submitItemEdition" @click.stop>
                             <input
                               ref="itemEditionInput"
@@ -228,7 +220,7 @@
                           </form>
                         </template>
                         <template v-else>
-                          <p class="item-title">{{ item.title }}</p>
+                          <p class="item-title">{{ getDisplayItemTitle(artifact.entity) }}</p>
                           <div v-if="props.isEditMode" class="entity-inline-actions">
                             <button
                               class="entity-icon-btn"
@@ -237,7 +229,7 @@
                               aria-label="Editar nombre del item"
                               :disabled="isBusy"
                               @mousedown.stop
-                              @click.stop="openItemEdition(item)"
+                              @click.stop="openItemEdition(artifact.entity)"
                             >
                               <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                                 <path d="M13.75 3.75L16.25 6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -251,7 +243,7 @@
                               aria-label="Eliminar item"
                               :disabled="isBusy"
                               @mousedown.stop
-                              @click.stop="openDeleteConfirmation('item', item.id, item.title)"
+                              @click.stop="openDeleteConfirmation('item', artifact.entity.id, artifact.entity.title)"
                             >
                               <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                                 <path d="M5.83301 7.5H14.1663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -263,26 +255,26 @@
                         </template>
                       </div>
                     </div>
-                    <p class="item-description">{{ getItemMetaLabel(item) }}</p>
+                    <p class="item-description">{{ getItemMetaLabel(artifact.entity) }}</p>
                     <div class="item-footer compact-item-footer">
                       <div class="item-area-group">
                         <button
                           v-for="area in itemAreas"
-                          :key="`${item.id}-${area}`"
+                          :key="`${artifact.entity.id}-${area}`"
                           class="item-area-tag"
-                          :class="{ active: isAreaSelected(item, area) }"
-                          :style="getAreaTagStyle(area, isAreaSelected(item, area))"
-                          @click.stop="handleToggleItemArea(item.id, area)"
+                          :class="{ active: isAreaSelected(artifact.entity, area) }"
+                          :style="getAreaTagStyle(area, isAreaSelected(artifact.entity, area))"
+                          @click.stop="handleToggleItemArea(artifact.entity.id, area)"
                         >
                           {{ area }}
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                <p v-else class="empty-inline-copy">Sin items.</p>
+                </template>
               </div>
+
+              <p v-else class="empty-inline-copy">Sin artefactos.</p>
             </div>
           </div>
         </transition>
@@ -336,7 +328,7 @@
                 >
                   <div class="deployment-header">
                     <div class="release-title-line">
-                      <h4>{{ getReleaseById(deployment.itemId)?.name }}</h4>
+                      <h4>{{ getDisplayReleaseName(getReleaseById(deployment.itemId)) }}</h4>
                       <div v-if="props.isEditMode" class="entity-inline-actions">
                         <button
                           class="entity-icon-btn entity-icon-btn-delete"
@@ -386,7 +378,7 @@
                             </form>
                           </template>
                           <template v-else>
-                            <span class="item-title">{{ item.title }}</span>
+                            <span class="item-title">{{ getDisplayItemTitle(item) }}</span>
                             <div v-if="props.isEditMode" class="entity-inline-actions">
                               <button
                                 class="entity-icon-btn"
@@ -478,7 +470,7 @@
                         </form>
                       </template>
                       <template v-else>
-                        <p class="item-title deployed-item-title">{{ getItemById(deployment.itemId)?.title }}</p>
+                        <p class="item-title deployed-item-title">{{ getDisplayItemTitle(getItemById(deployment.itemId)) }}</p>
                         <div v-if="props.isEditMode" class="entity-inline-actions">
                           <button
                             class="entity-icon-btn"
@@ -633,6 +625,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useFlowTrackDomain } from '../composables/useFlowTrackDomain'
+import { normalizeReleaseName } from '../domain/flowTrackDomain'
 
 const props = defineProps({
   isEditMode: {
@@ -922,6 +915,43 @@ const poolItems = computed(() => {
   return Array.from(itemsById.values())
 })
 
+const getEntityTimestamp = entity => {
+  const rawId = entity?.id?.split('-')?.at(-1)
+  const timestamp = Number(rawId)
+
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return 0
+  }
+
+  return timestamp
+}
+
+const poolArtifacts = computed(() => {
+  const releases = poolReleases.value.map((release, index) => ({
+    id: release.id,
+    kind: 'release',
+    entity: release,
+    index,
+    createdAt: getEntityTimestamp(release)
+  }))
+
+  const items = poolItems.value.map((item, index) => ({
+    id: item.id,
+    kind: 'item',
+    entity: item,
+    index: releases.length + index,
+    createdAt: getEntityTimestamp(item)
+  }))
+
+  return [...releases, ...items].sort((firstArtifact, secondArtifact) => {
+    if (firstArtifact.createdAt !== secondArtifact.createdAt) {
+      return firstArtifact.createdAt - secondArtifact.createdAt
+    }
+
+    return firstArtifact.index - secondArtifact.index
+  })
+})
+
 watch(lastSavedLabel, label => {
   window.dispatchEvent(new CustomEvent('flowtrack:last-saved-label', { detail: label }))
 }, { immediate: true })
@@ -976,8 +1006,20 @@ const getItemTypeLabel = item => {
   return itemTypeLabels[item?.type] ?? 'Item'
 }
 
+const getDisplayReleaseName = release => {
+  return normalizeReleaseName(release?.name ?? '') || 'Sin nombre'
+}
+
+const getDisplayItemTitle = item => {
+  return item?.title?.trim() || 'Sin título'
+}
+
 const getItemMetaLabel = (item, dateValue = null) => {
   const timestamp = dateValue || getItemCreatedAt(item)
+  if (item?.type === 'feature' || item?.type === 'hotfix') {
+    return formatRelativeTime(timestamp)
+  }
+
   return `${getItemTypeLabel(item)} · ${formatRelativeTime(timestamp)}`
 }
 
@@ -1084,7 +1126,12 @@ const retryInitialize = async () => {
 
 const focusInput = async inputRef => {
   await nextTick()
-  inputRef.value?.focus()
+
+  const resolvedInput = Array.isArray(inputRef.value)
+    ? inputRef.value[0]
+    : inputRef.value
+
+  resolvedInput?.focus?.()
 }
 
 const resetNewItemForm = () => {
@@ -1929,37 +1976,46 @@ onBeforeUnmount(() => {
   max-width: 620px;
 }
 
+.pool-tray-copy kbd {
+  display: inline-block;
+  font-family: var(--font-body, inherit);
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 5px;
+  border: 1px solid var(--border-strong, #cbd5e1);
+  border-radius: 5px;
+  background: var(--surface-panel, #ffffff);
+  color: var(--text-primary, #1e293b);
+  box-shadow: 0 1px 0 var(--border-strong, #cbd5e1);
+  vertical-align: baseline;
+}
+
 .pool-tray-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
-  gap: 16px;
+  display: block;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.pool-tray-body.has-two-groups .pool-items-section {
-  padding-left: 16px;
-  border-left: 1px solid var(--border-subtle, #e2e8f0);
+.pool-tray-body::-webkit-scrollbar {
+  display: none;
 }
 
-.pool-section {
+.pool-artifact-flow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: nowrap;
   gap: 12px;
-  min-width: 0;
-}
-
-.pool-release-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-}
-
-.pool-item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
+  align-items: flex-start;
+  min-width: max-content;
 }
 
 .pool-release-card {
+  box-sizing: border-box;
+  width: 220px;
+  flex: 0 0 220px;
   padding: 10px;
   min-height: 132px;
   background: rgba(255, 255, 255, 0.88);
@@ -1967,11 +2023,30 @@ onBeforeUnmount(() => {
 
 .pool-release-items {
   gap: 8px;
+  width: 100%;
 }
 
 .pool-item-card {
-  min-height: 98px;
+  box-sizing: border-box;
+  width: 220px;
+  flex: 0 0 220px;
+  min-height: 96px;
   background: rgba(255, 255, 255, 0.78);
+}
+
+.pool-release-items .pool-item-card {
+  width: 100%;
+  max-width: 100%;
+  flex: none;
+}
+
+.pool-artifact-flow .item-feature .item-description,
+.pool-artifact-flow .item-hotfix .item-description,
+.pool-release-items .item-feature .item-description,
+.pool-release-items .item-hotfix .item-description,
+.deployments-container .item-feature .item-description,
+.deployments-container .item-hotfix .item-description {
+  display: none;
 }
 
 .empty-inline-copy {
@@ -1990,6 +2065,10 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;
   align-items: start;
+  padding: 20px;
+  border-radius: var(--radius-lg, 24px);
+  background: #eceff3;
+  border: 1px solid #d8dee6;
 }
 
 .environment-panel {
@@ -2575,14 +2654,17 @@ onBeforeUnmount(() => {
   }
 
   .pool-tray-body {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
-  .pool-tray-body.has-two-groups .pool-items-section {
-    padding-left: 0;
-    padding-top: 14px;
-    border-left: none;
-    border-top: 1px solid var(--border-subtle, #e2e8f0);
+  .pool-release-card {
+    flex-basis: 200px;
+    width: 200px;
+  }
+
+  .pool-item-card {
+    flex-basis: 200px;
+    width: 200px;
   }
 
   .environment-grid {
@@ -2623,6 +2705,16 @@ onBeforeUnmount(() => {
     right: auto;
   }
 
+  .pool-release-card {
+    width: auto;
+    flex-basis: 220px;
+  }
+
+  .pool-item-card {
+    width: auto;
+    flex-basis: 220px;
+  }
+
   .environment-grid {
     grid-template-columns: 1fr;
   }
@@ -2639,6 +2731,10 @@ onBeforeUnmount(() => {
 
   .pool-tray {
     padding: 18px;
+  }
+
+  .environment-grid {
+    padding: 16px;
   }
 
   .environment-title {

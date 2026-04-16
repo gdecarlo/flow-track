@@ -133,6 +133,10 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - Las tarjetas de item ya no usan sombra; mantienen solo borde, color y desplazamiento sutil al hover.
 - Contenedores de release con borde gris claro y radio para delimitar grupos con bajo peso visual.
 - Los releases disponibles (no desplegados) mantienen el mismo lenguaje visual que los releases en ambientes y no muestran contador de cantidad de items.
+- Los nombres visibles y persistidos de releases ya no agregan el prefijo `Release`; si llega data histórica con ese prefijo, se normaliza al cargar.
+- Los títulos de items se preservan exactamente como los escribe el usuario; para `feature` y `hotfix` la UI solo elimina la palabra de tipo en la metadata secundaria, no del título.
+- El área contenedora de ambientes usa ahora un fondo gris claro propio y el Pool renderiza releases e items en una sola fila horizontal desplazable, sin columnas separadas por tipo.
+- La edición inline de items ahora tolera refs múltiples en Vue al enfocar el input, evitando el error `focus is not a function`.
 - Durante drag sobre releases, el estado de drop target realza solo el borde (sin fondo verde), con trazo más oscuro y más grueso, aplicado sobre toda la superficie del release.
 - El flujo de drag/drop entre releases protege contra estado de drag nulo (`dragData`) para evitar errores de consola al mover items entre releases.
 - El drag/drop usa payload serializado en `dataTransfer` como respaldo del estado reactivo para evitar pérdidas intermitentes de contexto al soltar sobre releases o ambientes.

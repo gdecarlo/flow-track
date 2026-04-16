@@ -24,6 +24,30 @@ const itemAreaAliases = {
 
 export const validAreas = ['web', 'api', 'mobile']
 
+const normalizeWhitespace = value => value.replace(/\s+/g, ' ').trim()
+
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const stripLeadingEntityLabel = (value, labels) => {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  const normalizedValue = normalizeWhitespace(value)
+  if (!normalizedValue) {
+    return ''
+  }
+
+  const pattern = labels.map(escapeRegExp).join('|')
+  const normalizedLabel = normalizedValue.replace(new RegExp(`^(?:${pattern})(?:\\s*[:\\-])?\\s+`, 'i'), '')
+
+  return normalizedLabel || normalizedValue
+}
+
+export const normalizeReleaseName = rawName => {
+  return stripLeadingEntityLabel(rawName, ['release'])
+}
+
 export const normalizeItemArea = area => {
   if (typeof area !== 'string') {
     return ''
@@ -106,7 +130,7 @@ export const formatDate = date => {
   }).format(date)
 }
 
-export const formatReleaseName = rawName => `Release ${rawName.trim()}`
+export const formatReleaseName = rawName => normalizeReleaseName(rawName)
 
 export const isPoolEnvironment = environment => environment?.kind === environmentKinds.pool
 
@@ -230,7 +254,7 @@ export const hasDuplicateReleaseName = (releases, rawName) => {
   }
 
   const releaseName = formatReleaseName(rawName)
-  return releases.some(release => release.name === releaseName)
+  return releases.some(release => normalizeReleaseName(release.name) === releaseName)
 }
 
 export const hasDuplicateEnvironmentName = (environments, rawName) => {

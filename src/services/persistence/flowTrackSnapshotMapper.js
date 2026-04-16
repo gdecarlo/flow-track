@@ -5,6 +5,7 @@ import {
   isProductionEnvironment,
   normalizeItemArea,
   normalizeEnvironmentLayout,
+  normalizeReleaseName,
   poolEnvironmentId,
   poolEnvironmentName,
   validAreas
@@ -58,7 +59,7 @@ const normalizeItem = item => ({
 
 const normalizeRelease = release => ({
   id: release?.id ?? '',
-  name: release?.name ?? '',
+  name: normalizeReleaseName(release?.name ?? ''),
   description: release?.description ?? '',
   items: Array.isArray(release?.items) ? release.items.map(normalizeItem) : []
 })
