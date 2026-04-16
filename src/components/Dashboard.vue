@@ -2390,6 +2390,7 @@ defineExpose({
 
 .compact-item-footer {
   gap: 8px;
+  margin-top: auto;
 }
 
 .item-area-group {
@@ -2432,7 +2433,8 @@ defineExpose({
 }
 
 .compact-deployed-item {
-  min-height: 96px;
+  display: flex;
+  flex-direction: column;
 }
 
 .creation-modal-backdrop {

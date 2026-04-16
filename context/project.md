@@ -141,6 +141,7 @@ La aplicación maneja cuatro conceptos principales persistidos como un único sn
 - El flujo de drag/drop entre releases protege contra estado de drag nulo (`dragData`) para evitar errores de consola al mover items entre releases.
 - El drag/drop usa payload serializado en `dataTransfer` como respaldo del estado reactivo para evitar pérdidas intermitentes de contexto al soltar sobre releases o ambientes.
 - Se eliminó la barra/toast superior del dashboard que mostraba estado de guardado.
+- Los `compact-deployed-item` ya no fuerzan altura mínima fija; su alto crece libremente con el contenido y el grupo de áreas (`web`, `api`, `mobile`) queda anclado al borde inferior de la tarjeta.
 
 ## Estado de build verificado
 
