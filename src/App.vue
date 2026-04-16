@@ -5,6 +5,8 @@ import Dashboard from './components/Dashboard.vue';
 
 const lastSavedLabel = ref('')
 const isEditMode = ref(false)
+const dashboardRef = ref(null)
+const createMenuRef = ref(null)
 
 const handleLastSavedLabel = event => {
   lastSavedLabel.value = event.detail || ''
@@ -14,12 +16,23 @@ const toggleEditMode = () => {
   isEditMode.value = !isEditMode.value
 }
 
+const handleOutsideClick = event => {
+  if (!dashboardRef.value?.isCreateMenuOpen || !createMenuRef.value) {
+    return
+  }
+  if (!createMenuRef.value.contains(event.target)) {
+    dashboardRef.value.toggleCreateMenu()
+  }
+}
+
 onMounted(() => {
   window.addEventListener('flowtrack:last-saved-label', handleLastSavedLabel)
+  document.addEventListener('pointerdown', handleOutsideClick)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('flowtrack:last-saved-label', handleLastSavedLabel)
+  document.removeEventListener('pointerdown', handleOutsideClick)
 })
 
 </script>
@@ -35,6 +48,39 @@ onBeforeUnmount(() => {
 
         <div class="navbar-actions">
           <span v-if="lastSavedLabel" class="last-saved-inline">{{ lastSavedLabel }}</span>
+          <div v-if="dashboardRef?.isReady" ref="createMenuRef" class="create-menu-wrap">
+            <button
+              class="navbar-btn navbar-btn-primary"
+              :class="{ active: dashboardRef?.isCreateMenuOpen }"
+              :disabled="dashboardRef?.isBusy"
+              type="button"
+              @click="dashboardRef?.toggleCreateMenu()"
+            >
+              Crear
+            </button>
+            <div v-if="dashboardRef?.isCreateMenuOpen" class="create-menu-panel" role="menu" aria-label="Opciones de creación">
+              <button
+                v-for="action in dashboardRef?.creationActions"
+                :key="action.kind"
+                class="create-menu-item"
+                type="button"
+                :disabled="dashboardRef?.isBusy"
+                @click="dashboardRef?.selectCreationAction(action.kind)"
+              >
+                <img :src="action.icon" alt="" class="create-menu-icon" aria-hidden="true" />
+                <span class="create-menu-label">{{ action.label }}</span>
+              </button>
+            </div>
+          </div>
+          <button
+            v-if="dashboardRef?.isReady"
+            class="navbar-btn"
+            :disabled="dashboardRef?.isBusy"
+            type="button"
+            @click="dashboardRef?.togglePoolTray()"
+          >
+            {{ dashboardRef?.showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool' }}
+          </button>
           <button
             class="edit-mode-toggle"
             :class="{ active: isEditMode }"
@@ -53,7 +99,7 @@ onBeforeUnmount(() => {
     </nav>
 
     <main class="main-content">
-      <Dashboard :is-edit-mode="isEditMode" />
+      <Dashboard ref="dashboardRef" :is-edit-mode="isEditMode" />
     </main>
   </div>
 </template>
@@ -88,9 +134,9 @@ onBeforeUnmount(() => {
   --accent-soft: #dcfce7;
   --danger: #b91c1c;
   --danger-soft: #fee2e2;
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
   --type-display: 3.8rem;
   --type-title: 1.9rem;
   --type-body: 1.0625rem;
@@ -104,7 +150,7 @@ onBeforeUnmount(() => {
 
 .navbar {
   background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 3px solid #1a1a1a;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -118,6 +164,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   min-height: 88px;
+  box-sizing: border-box;
 }
 
 .brand-group {
@@ -125,6 +172,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   justify-content: center;
   gap: 6px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .app-title {
@@ -154,16 +203,106 @@ onBeforeUnmount(() => {
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.create-menu-wrap {
+  position: relative;
+}
+
+.create-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 240px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 110;
+}
+
+.create-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-menu-item:hover:not(:disabled) {
+  background: var(--surface-subtle);
+}
+
+.create-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-menu-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.create-menu-label {
+  line-height: 1.3;
+}
+
+.navbar-btn {
+  border: 1px solid #1a1a1a;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 0;
+  font-size: var(--type-meta);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navbar-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.navbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.navbar-btn-primary {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.navbar-btn-primary:hover:not(:disabled) {
+  background: #333333;
+}
+
+.navbar-btn-primary.active {
+  background: #333333;
 }
 
 .edit-mode-toggle {
-  border: 1px solid var(--border-strong);
+  border: 1px solid #1a1a1a;
   background: var(--surface-panel);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   height: 44px;
   padding: 0 16px;
-  border-radius: 999px;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -172,14 +311,15 @@ onBeforeUnmount(() => {
 }
 
 .edit-mode-toggle:hover {
-  border-color: var(--text-secondary);
-  color: var(--text-primary);
+  border-color: #1a1a1a;
+  background: #f5f5f5;
+  color: var(--text-strong);
 }
 
 .edit-mode-toggle.active {
-  background: var(--surface-subtle);
-  color: var(--text-strong);
-  border-color: var(--text-primary);
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #1a1a1a;
 }
 
 .edit-mode-toggle-icon {

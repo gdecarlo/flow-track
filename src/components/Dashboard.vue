@@ -12,51 +12,6 @@
 
     <div v-else class="dashboard-container">
       <section class="board-shell">
-        <header class="board-toolbar">
-          <div class="board-intro">
-            
-          </div>
-
-          <div class="board-toolbar-actions">
-            <div ref="createMenuRef" class="create-menu">
-              <button
-                class="board-primary-action"
-                :class="{ active: isCreateMenuOpen }"
-                :aria-expanded="isCreateMenuOpen"
-                :disabled="isBusy"
-                type="button"
-                @click="toggleCreateMenu"
-              >
-                Crear
-              </button>
-
-              <div v-if="isCreateMenuOpen" class="create-menu-panel" role="menu" aria-label="Opciones de creación">
-                <button
-                  v-for="action in creationActions"
-                  :key="action.kind"
-                  class="create-menu-item"
-                  type="button"
-                  :disabled="isBusy"
-                  @click="selectCreationAction(action.kind)"
-                >
-                  <img :src="action.icon" alt="" class="create-menu-icon" aria-hidden="true" />
-                  <span class="create-menu-label">{{ action.label }}</span>
-                </button>
-              </div>
-            </div>
-
-            <button
-              class="board-secondary-action"
-              :aria-pressed="showPoolTray"
-              :disabled="isBusy"
-              type="button"
-              @click="togglePoolTray"
-            >
-              {{ showPoolTray ? 'Ocultar Pool' : 'Mostrar Pool' }}
-            </button>
-          </div>
-        </header>
-
         <transition name="pool-tray-visibility">
           <div
             v-show="showPoolTray && poolEnvironment"
@@ -1704,6 +1659,17 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
+
+defineExpose({
+  toggleCreateMenu,
+  togglePoolTray,
+  showPoolTray,
+  isCreateMenuOpen,
+  isBusy,
+  isReady,
+  creationActions,
+  selectCreationAction
+})
 </script>
 
 <style scoped>
@@ -1723,7 +1689,7 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 14px;
   padding: 32px;
-  border-radius: var(--radius-lg, 24px);
+  border-radius: 0;
   border: 1px solid var(--border-subtle, #e2e8f0);
   background: var(--surface-panel, #ffffff);
 }
@@ -1742,9 +1708,9 @@ onBeforeUnmount(() => {
 
 .state-action-btn {
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 10px 18px;
-  background: var(--accent, #15803d);
+  background: #1a1a1a;
   color: #ffffff;
   cursor: pointer;
   font-weight: 600;
@@ -1765,9 +1731,9 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 24px;
   padding: 28px;
-  border-radius: var(--radius-lg, 24px);
-  background: var(--surface-panel, #ffffff);
-  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 0;
+  background: transparent;
+  border: none;
 }
 
 .board-toolbar {
@@ -1776,7 +1742,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 24px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  border-bottom: none;
 }
 
 .board-intro {
@@ -1823,12 +1789,12 @@ onBeforeUnmount(() => {
 .board-primary-action,
 .board-secondary-action {
   min-height: 48px;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-strong, #cbd5e1);
+  border: 1px solid #1a1a1a;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -1836,25 +1802,26 @@ onBeforeUnmount(() => {
 }
 
 .board-primary-action {
-  background: var(--accent, #15803d);
-  border-color: var(--accent, #15803d);
+  background: #1a1a1a;
+  border-color: #1a1a1a;
   color: #ffffff;
 }
 
 .board-primary-action:hover:not(:disabled),
 .board-primary-action.active {
-  background: var(--accent-strong, #166534);
-  border-color: var(--accent-strong, #166534);
+  background: #333333;
+  border-color: #333333;
 }
 
 .board-secondary-action {
   background: var(--surface-panel, #ffffff);
-  color: var(--text-secondary, #475569);
+  color: var(--text-primary, #1e293b);
 }
 
 .board-secondary-action:hover:not(:disabled) {
-  border-color: var(--text-secondary, #475569);
-  color: var(--text-primary, #1e293b);
+  background: #f5f5f5;
+  border-color: #1a1a1a;
+  color: var(--text-strong, #0f172a);
 }
 
 .board-primary-action:disabled,
@@ -1869,7 +1836,7 @@ onBeforeUnmount(() => {
   right: 0;
   min-width: 240px;
   padding: 10px;
-  border-radius: var(--radius-md, 18px);
+  border-radius: 0;
   border: 1px solid var(--border-subtle, #e2e8f0);
   background: var(--surface-panel, #ffffff);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
@@ -1883,7 +1850,7 @@ onBeforeUnmount(() => {
   width: 100%;
   border: none;
   background: transparent;
-  border-radius: var(--radius-sm, 12px);
+  border-radius: 0;
   padding: 12px 14px;
   display: flex;
   align-items: center;
@@ -1919,7 +1886,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   background: var(--surface-panel, #ffffff);
   border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: var(--radius-lg, 24px);
+  border-radius: 0;
 }
 
 .pool-tray {
@@ -1928,9 +1895,9 @@ onBeforeUnmount(() => {
   gap: 16px;
   padding: 20px 22px 22px;
   overflow: hidden;
-  border-radius: var(--radius-md, 18px);
-  background: var(--surface-subtle, #f8fafc);
-  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 0;
+  background: var(--surface-panel, #ffffff);
+  border: 2px solid #1a1a1a;
 }
 
 .pool-tray-visibility-enter-active,
@@ -1984,7 +1951,7 @@ onBeforeUnmount(() => {
   line-height: 1;
   padding: 2px 5px;
   border: 1px solid var(--border-strong, #cbd5e1);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--surface-panel, #ffffff);
   color: var(--text-primary, #1e293b);
   box-shadow: 0 1px 0 var(--border-strong, #cbd5e1);
@@ -2018,7 +1985,7 @@ onBeforeUnmount(() => {
   flex: 0 0 220px;
   padding: 10px;
   min-height: 132px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--surface-panel, #ffffff);
 }
 
 .pool-release-items {
@@ -2031,7 +1998,7 @@ onBeforeUnmount(() => {
   width: 220px;
   flex: 0 0 220px;
   min-height: 96px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-panel, #ffffff);
 }
 
 .pool-release-items .pool-item-card {
@@ -2052,7 +2019,7 @@ onBeforeUnmount(() => {
 .empty-inline-copy {
   margin: 0;
   border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: var(--radius-sm, 12px);
+  border-radius: 0;
   padding: 16px 18px;
   color: var(--text-secondary, #475569);
   font-size: 0.95rem;
@@ -2066,9 +2033,9 @@ onBeforeUnmount(() => {
   gap: 20px;
   align-items: start;
   padding: 20px;
-  border-radius: var(--radius-lg, 24px);
-  background: #eceff3;
-  border: 1px solid #d8dee6;
+  border-radius: 0;
+  background: var(--surface-canvas, #f6f7f4);
+  border: none;
 }
 
 .environment-panel {
@@ -2135,7 +2102,7 @@ onBeforeUnmount(() => {
 }
 
 .environment-chip {
-  border-radius: 999px;
+  border-radius: 0;
   padding: 4px 9px;
   background: rgba(22, 163, 74, 0.12);
   color: #15803d;
@@ -2160,7 +2127,7 @@ onBeforeUnmount(() => {
 .empty-column-copy {
   margin: 0;
   border: 1px dashed var(--border-subtle, #e2e8f0);
-  border-radius: var(--radius-md, 18px);
+  border-radius: 0;
   padding: 20px;
   color: var(--text-muted, #475569);
   font-size: 0.95rem;
@@ -2172,7 +2139,7 @@ onBeforeUnmount(() => {
 .release-card,
 .deployed-release {
   border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: var(--radius-md, 18px);
+  border-radius: 0;
   padding: 16px;
   background: var(--surface-panel, #ffffff);
   transition: border-color 0.2s ease, background-color 0.2s ease;
@@ -2224,9 +2191,10 @@ onBeforeUnmount(() => {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: var(--surface-panel, #ffffff);
-  border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: 16px;
+  background: var(--surface-subtle, #f8fafc);
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
   padding: 14px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
@@ -2247,7 +2215,7 @@ onBeforeUnmount(() => {
 .item-card:hover,
 .deployed-item:hover,
 .deployed-item-detail:hover {
-  border-color: var(--border-strong, #cbd5e1);
+  border-left-color: var(--border-strong, #cbd5e1);
 }
 
 .item-card,
@@ -2256,16 +2224,16 @@ onBeforeUnmount(() => {
 }
 
 .item-feature {
-  border-color: var(--border-subtle, #e2e8f0);
+  border-left-color: var(--border-strong, #cbd5e1);
 }
 
 .item-fix {
-  border-color: var(--border-subtle, #e2e8f0);
+  border-left-color: var(--border-strong, #cbd5e1);
 }
 
 .item-hotfix {
-  border-color: rgba(185, 28, 28, 0.18);
-  background: rgba(254, 242, 242, 0.72);
+  border-left-color: var(--danger, #b91c1c);
+  background: rgba(254, 242, 242, 0.45);
 }
 
 .item-header-row {
@@ -2310,7 +2278,7 @@ onBeforeUnmount(() => {
   width: 22px;
   height: 22px;
   border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface-panel, #ffffff);
   color: var(--text-muted, #64748b);
   padding: 0;
@@ -2356,7 +2324,7 @@ onBeforeUnmount(() => {
 
 .inline-edit-input {
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 0;
   font-size: 0.9rem;
 }
 
@@ -2377,7 +2345,7 @@ onBeforeUnmount(() => {
   padding: 0;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: 0;
   color: #64748b;
   margin-left: auto;
   display: inline-flex;
@@ -2432,7 +2400,7 @@ onBeforeUnmount(() => {
 
 .item-area-tag {
   border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.78rem;
   font-weight: 600;
   padding: 5px 10px;
@@ -2480,7 +2448,7 @@ onBeforeUnmount(() => {
 
 .creation-modal {
   width: min(540px, 100%);
-  border-radius: var(--radius-lg, 24px);
+  border-radius: 0;
   background: var(--surface-panel, #ffffff);
   border: 1px solid var(--border-subtle, #e2e8f0);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
@@ -2518,7 +2486,7 @@ onBeforeUnmount(() => {
   color: var(--text-secondary, #475569);
   width: 36px;
   height: 36px;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 1.3rem;
   line-height: 1;
@@ -2539,7 +2507,7 @@ onBeforeUnmount(() => {
 .text-input {
   width: 100%;
   border: 1px solid var(--border-strong, #cbd5e1);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 15px 16px;
   font-size: 1.02rem;
   color: var(--text-strong, #0f172a);
@@ -2550,7 +2518,7 @@ onBeforeUnmount(() => {
 }
 
 .text-input:focus {
-  border-color: var(--accent, #15803d);
+  border-color: #1a1a1a;
   background: #ffffff;
 }
 
@@ -2574,7 +2542,7 @@ onBeforeUnmount(() => {
 .secondary-btn,
 .danger-btn {
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   min-height: 44px;
   padding: 0 18px;
   font-weight: 600;
@@ -2582,7 +2550,7 @@ onBeforeUnmount(() => {
 }
 
 .primary-btn {
-  background: var(--accent, #15803d);
+  background: #1a1a1a;
   color: #ffffff;
 }
 
